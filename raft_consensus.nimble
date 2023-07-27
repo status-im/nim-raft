@@ -15,7 +15,10 @@ author        = "Status Research & Development GmbH"
 description   = "raft consensus in nim"
 license       = "Apache License 2.0"
 
-requires "nim >= 1.2.0"
+requires "nim >= 1.6.0"
 requires "stew >= 0.1.0"
+requires "nimcrypto >= 0.5.4"
+requires "unittest2 >= 0.0.4"
+requires "chronicles >= 0.10.2"
 
 # Helper functions
