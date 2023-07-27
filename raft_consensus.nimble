@@ -9,7 +9,7 @@
 
 mode = ScriptMode.Verbose
 
-packageName   = "raft-consensus"
+packageName   = "raft_consensus"
 version       = "0.0.1"
 author        = "Status Research & Development GmbH"
 description   = "raft consensus in nim"
