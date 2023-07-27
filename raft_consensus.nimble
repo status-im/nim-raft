@@ -14,7 +14,6 @@ version       = "0.0.1"
 author        = "Status Research & Development GmbH"
 description   = "raft consensus in nim"
 license       = "Apache License 2.0"
-skipDirs      = @["tests"]
 
 requires "nim >= 1.2.0"
 requires "stew >= 0.1.0"
