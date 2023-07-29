@@ -77,11 +77,28 @@ type
     # RAFT Node Persistent Storage basic definition
     RAFTNodePersistentStorage* = ref object     # Should be some kind of Persistent Transactional Store Wrapper
 
+    # Basic modules (algos) definitions
+    RAFTConsensusModule* = ref object
+        state_transitions_fsm: fsm          # I plan to use nim.fsm https://github.com/ba0f3/fsm.nim
+        raft_node: RAFTNode
+
+    RAFTLogCompactioModule* = ref object
+        raft_node: RAFTNode
+    
+    RAFTMembershipChangeModule* = ref object
+        raft_node: RAFTNode    
+
     # RAFT Node Object definitions
     RAFTNode* = object
-        # Timers definitions goes here
+        # Timers, mutexes definitions go here
         # ...
 
+        # Modules
+        consensus_module: RAFTConsensusModule
+        log_compaction_module: RAFTLogCompactioModule
+        membership_change_module: RAFTMembershipChangeModule
+
+        # Misc
         msg_send_callback: RAFTMessageSendCallback
         persistent_storage: RAFTNodePersistentStorage
 
@@ -106,13 +123,3 @@ type
                                                 # (initialized to leader last log index + 1)
         match_index: seq[RAFTLogIndex]          # For each peer RAFT Node, index of highest log entry known to be replicated on Node
                                                 # (initialized to 0, increases monotonically)
-        
-        RAFTConsensusModule* = ref object
-            state_transitions_fsm: fsm          # I plan to use nim.fsm https://github.com/ba0f3/fsm.nim
-            raft_node: RAFTNode
-
-        RAFTLogCompactioModule* = ref object
-            raft_node: RAFTNode
-        
-        RAFTMembershipChangeModule* = ref object
-            raft_node: RAFTNode
