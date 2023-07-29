@@ -86,7 +86,7 @@ type
     RAFTNodePersistentStorage* = ref object     # Should be some kind of Persistent Transactional Store Wrapper
 
     # Basic modules (algos) definitions
-    RAFTNodeAccessCallback = proc (): RAFTNode
+    RAFTNodeAccessCallback = proc: RAFTNode {.nimcall, gcsafe.}
     RAFTConsensusModule* = object of RootObj
         state_transitions_fsm: seq[byte]        # I plan to use nim.fsm https://github.com/ba0f3/fsm.nim
         raft_node_access_callback: RAFTNodeAccessCallback
