@@ -44,7 +44,6 @@
         "sha1": "f76c87707cd4e96355b8bb6ef27e7f8b0aac1e08"
       }
     },
-    ,
     "fsm.nim": {
       "version": "0.1.1",
       "vcsRevision": "ca6e14a5562e46805ed89593cb63bf6236939772",
@@ -54,6 +53,16 @@
       "checksums": {
         "sha1": "f76c87707cd4e96355b8bb6ef27e7f8b0aac1e08"
       }
-    }
+    },
+    "nim-eth": {
+      "version": "1.0.0",
+      "vcsRevision": "521db96a651f582c937a0bb8c8069ef9b920e08c",
+      "url": "https://github.com/status-im/nim-eth",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "f76c87707cd4e96355b8bb6ef27e7f8b0aac1e08"
+      }
+    }    
   }
 }
