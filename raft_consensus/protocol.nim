@@ -7,8 +7,12 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
+                        #                                       #
+                        #   RAFT Messages Protocol definition   #
+                        #                                       #
+
 type
-    # RAFT Node basic Messages definitions
+    # RAFT Node Messages definitions
     RAFTMessageId* = object                     # Some Kind of UUID assigned to every RAFT Node Message,
                                                 # so it can be matched with it's coresponding response etc.
 
@@ -38,7 +42,7 @@ type
     RAFTMessageSendCallback* = proc (raft_message: RAFTMessageBase) {.nimcall, gcsafe.} # Callback for Sending RAFT Node Messages
                                                                                         # out of this RAFT Node. Can be used for broadcasting
                                                                                         # (a Heart-Beat for example)
-    # RAFT Node Client Request/Response basic definitions
+    # RAFT Node Client Request/Response definitions
     RAFTNodeClientRequestOps = enum
         REQUEST_STATE       = 0,
         APPEND_NEW_ENTRY    = 1

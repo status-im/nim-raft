@@ -10,6 +10,8 @@
 # RAFT Node Public Types.
 # I guess that at some point these can be moved to a separate file called raft_consensus_types.nim for example
 
+import std/locks
+
 type
     # RAFT Node basic definitions
     Blob* = seq[byte]
@@ -56,8 +58,16 @@ type
 
     # RAFT Node Object definitions
     RAFTNode* = object
-        # Timers, mutexes definitions go here
-        # ...
+        # Timers
+        voting_timout: nil
+        heart_beat_timeout: nil 
+        # etc. timers
+
+        # Mtx definitions go here
+        raft_state_mutex: Lock
+        raft_log_mutex: Lock
+        raft_comm_mutex_receive_msg: Lock
+        raft_comm_mutex_client_response: Lock
 
         # Modules
         consensus_module: RAFTConsensusModule
@@ -89,3 +99,4 @@ type
                                                 # (initialized to leader last log index + 1)
         match_index: seq[RAFTLogIndex]          # For each peer RAFT Node, index of highest log entry known to be replicated on Node
                                                 # (initialized to 0, increases monotonically)
+
