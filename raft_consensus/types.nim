@@ -1,3 +1,12 @@
+# nim-raft-consesnsus
+# Copyright (c) 2023 Status Research & Development GmbH
+# Licensed under either of
+#  * Apache License, version 2.0, ([LICENSE-APACHE](LICENSE-APACHE))
+#  * MIT license ([LICENSE-MIT](LICENSE-MIT))
+# at your option.
+# This file may not be copied, modified, or distributed except according to
+# those terms.
+
 # RAFT Node Public Types.
 # I guess that at some point these can be moved to a separate file called raft_consensus_types.nim for example
 import fsm

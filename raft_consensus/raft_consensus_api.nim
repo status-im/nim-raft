@@ -6,6 +6,7 @@
 # at your option.
 # This file may not be copied, modified, or distributed except according to
 # those terms.
+
 import types
 
 # RAFT Node Public API procedures / functions
@@ -17,7 +18,6 @@ proc RAFTNodeCreateNew*(id: RAFTNodeId, peers: RAFTNodePeers, state_machine: RAF
 proc RAFTNodeLoad*(state_machine: RAFTNodeStateMachine, log: RAFTNodeLog,                                                # Load RAFT Node From Storage
                   persistent_storage: RAFTNodePersistentStorage, msg_send_callback: RAFTMessageSendCallback): RAFTNode =
     discard
-
 
 func RAFTNodeIdGet*(node: RAFTNode): RAFTNodeId =                   # Get RAFT Node ID
     discard
