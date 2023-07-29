@@ -9,7 +9,6 @@
 
 # RAFT Node Public Types.
 # I guess that at some point these can be moved to a separate file called raft_consensus_types.nim for example
-import fsm
 
 type
     # RAFT Node basic definitions
@@ -87,15 +86,16 @@ type
     RAFTNodePersistentStorage* = ref object     # Should be some kind of Persistent Transactional Store Wrapper
 
     # Basic modules (algos) definitions
-    RAFTConsensusModule* = ref object
-        state_transitions_fsm: fsm          # I plan to use nim.fsm https://github.com/ba0f3/fsm.nim
-        raft_node: RAFTNode
+    RAFTNodeAccessCallback = proc (): RAFTNode
+    RAFTConsensusModule* = object of RootObj
+        state_transitions_fsm: seq[byte]        # I plan to use nim.fsm https://github.com/ba0f3/fsm.nim
+        raft_node_access_callback: RAFTNodeAccessCallback
 
-    RAFTLogCompactioModule* = ref object
-        raft_node: RAFTNode
+    RAFTLogCompactionModule* = object of RootObj
+        raft_node_access_callback: RAFTNodeAccessCallback
     
-    RAFTMembershipChangeModule* = ref object
-        raft_node: RAFTNode    
+    RAFTMembershipChangeModule* = object of RootObj
+        raft_node_access_callback: RAFTNodeAccessCallback
 
     # RAFT Node Object definitions
     RAFTNode* = object
@@ -104,7 +104,7 @@ type
 
         # Modules
         consensus_module: RAFTConsensusModule
-        log_compaction_module: RAFTLogCompactioModule
+        log_compaction_module: RAFTLogCompactionModule
         membership_change_module: RAFTMembershipChangeModule
 
         # Misc

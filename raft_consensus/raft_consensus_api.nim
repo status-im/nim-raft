@@ -8,6 +8,7 @@
 # those terms.
 
 import types
+export types
 
 # RAFT Node Public API procedures / functions
 proc RAFTNodeCreateNew*(id: RAFTNodeId, peers: RAFTNodePeers, state_machine: RAFTNodeStateMachine,                       # Create New RAFT Node
@@ -17,6 +18,12 @@ proc RAFTNodeCreateNew*(id: RAFTNodeId, peers: RAFTNodePeers, state_machine: RAF
 
 proc RAFTNodeLoad*(state_machine: RAFTNodeStateMachine, log: RAFTNodeLog,                                                # Load RAFT Node From Storage
                   persistent_storage: RAFTNodePersistentStorage, msg_send_callback: RAFTMessageSendCallback): RAFTNode =
+    discard
+
+proc RAFTNodeStop*(node: RAFTNode) =
+    discard
+
+proc RAFTNodeStart*(node: RaftNode) =
     discard
 
 func RAFTNodeIdGet*(node: RAFTNode): RAFTNodeId =                   # Get RAFT Node ID
