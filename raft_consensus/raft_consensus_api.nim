@@ -7,7 +7,10 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
-import types, protocol
+import types
+import protocol
+import stew
+
 export types, protocol
 
 # RAFT Node Public API procedures / functions
@@ -46,3 +49,13 @@ proc RAFTNodeMessageDeliver*(node: RAFTNode, raft_message: RAFTMessageBase): RAF
 
 proc RAFTNodeRequest*(node: RAFTNode, req: RAFTNodeClientRequest): RAFTNodeClientResponse =                             # Process RAFTNodeClientRequest
     discard
+
+proc RAFTNodeLogLenGet*(node: RAFTNode): RAFTLogIndex =
+    discard
+
+proc RAFTNodeLogentryGet*(node: RAFTLogIndex): Result[RAFTNodeLogEntry, string] =
+    discard
+
+proc RAFTNodeStateMachineStateGet*(node: RAFTNode): RAFTNodeStateMachineState =
+    discard
+

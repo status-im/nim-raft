@@ -10,12 +10,10 @@
                         #                                       #
                         #   RAFT Messages Protocol definition   #
                         #                                       #
+import types
 
 type
     # RAFT Node Messages definitions
-    RAFTMessageId* = object                     # Some Kind of UUID assigned to every RAFT Node Message,
-                                                # so it can be matched with it's coresponding response etc.
-
     RAFTMessageOps* = enum
         REQUEST_VOTE        = 0,
         APPEND_LOG_ENTRY    = 1,
@@ -26,12 +24,6 @@ type
         data*: RAFTNodeLogEntry
         checksum*: RAFTMessagePayloadChecksum
 
-    RAFTMessageBase* = ref object of RootObj    # Base Type for RAFT Node Messages
-        msg_id*: RAFTMessageId                  # Message UUID
-        sender_id*: RAFTNodeId                  # Sender RAFT Node ID
-        sender_term*: RAFTNodeTerm              # Sender RAFT Node Term
-        peers*: RAFTNodePeers                   # List of RAFT Node IDs, which should receive this message
-
     RAFTMessage* = ref object of RAFTMessageBase
         op*: RAFTMessageOps                     # Message Op - Ask For Votes, Append Entry(ies) or Install Snapshot
         payload*: seq[RAFTMessagePayload]       # Message Payload(s) - e.g. log entry(ies) etc. Will be empty for a Heart-Beat                                            # Heart-Beat will be a message with Append Entry(ies) Op and empty payload
@@ -39,9 +31,6 @@ type
     RAFTMessageResponse* = ref object of RAFTMessageBase
         success*: bool                          # Indicates success/failure
 
-    RAFTMessageSendCallback* = proc (raft_message: RAFTMessageBase) {.nimcall, gcsafe.} # Callback for Sending RAFT Node Messages
-                                                                                        # out of this RAFT Node. Can be used for broadcasting
-                                                                                        # (a Heart-Beat for example)
     # RAFT Node Client Request/Response definitions
     RAFTNodeClientRequestOps = enum
         REQUEST_STATE       = 0,

@@ -26,14 +26,6 @@ type
     RAFTNodeTerm* = uint64                      # RAFT Node Term Type
     RAFTLogIndex* = uint64                      # RAFT Node Log Index Type
 
-    # RAFT Node basic Log definitions
-    RAFTNodeLogEntry* = ref object              # Abstarct RAFT Node Log entry containing opaque binary data (Blob)
-        term*: RAFTNodeTerm
-        data*: Blob
-
-    RAFTNodeLog* = ref object                   # Needs more elaborate definition. Probably this will be a RocksDB/MDBX/SQLite Store Wrapper etc.
-        log_data*: seq[RAFTNodeLogEntry]        # RAFT Node Log Data
-
     # RAFT Node State Machine basic definitions
     RAFTNodeStateMachineState* = object         # State Machine State
     RAFTNodeStateMachine* = ref object          # Some probably opaque State Machine Impelementation to be used by the RAFT Node
@@ -56,11 +48,32 @@ type
     RAFTMembershipChangeModule* = object of RootObj
         raft_node_access_callback: RAFTNodeAccessCallback
 
+    # Callback for sending messages out of this RAFT Node
+    RAFTMessageId* = object                     # Some Kind of UUID assigned to every RAFT Node Message,
+                                                # so it can be matched with it's coresponding response etc.
+
+    RAFTMessageSendCallback* = proc (raft_message: RAFTMessageBase) {.nimcall, gcsafe.} # Callback for Sending RAFT Node Messages
+                                                                                        # out of this RAFT Node. Can be used for broadcasting
+                                                                                        # (a Heart-Beat for example)
+    RAFTNodeLog* = ref object                   # Needs more elaborate definition. Probably this will be a RocksDB/MDBX/SQLite Store Wrapper etc.
+        log_data*: seq[RAFTNodeLogEntry]        # RAFT Node Log Data
+
+    # RAFT Node basic Log definitions
+    RAFTNodeLogEntry* = ref object              # Abstarct RAFT Node Log entry containing opaque binary data (Blob)
+        term*: RAFTNodeTerm
+        data*: Blob
+
+    RAFTMessageBase* = ref object of RootObj    # Base Type for RAFT Node Messages
+        msg_id*: RAFTMessageId                  # Message UUID
+        sender_id*: RAFTNodeId                  # Sender RAFT Node ID
+        sender_term*: RAFTNodeTerm              # Sender RAFT Node Term
+        peers*: RAFTNodePeers                   # List of RAFT Node IDs, which should receive this message
+
     # RAFT Node Object definitions
     RAFTNode* = object
         # Timers
-        voting_timout: nil
-        heart_beat_timeout: nil 
+        voting_timout: uint64
+        heart_beat_timeout: uint64
         # etc. timers
 
         # Mtx definitions go here
@@ -69,7 +82,7 @@ type
         raft_comm_mutex_receive_msg: Lock
         raft_comm_mutex_client_response: Lock
 
-        # Modules
+        # Modules (Algos)
         consensus_module: RAFTConsensusModule
         log_compaction_module: RAFTLogCompactionModule
         membership_change_module: RAFTMembershipChangeModule
