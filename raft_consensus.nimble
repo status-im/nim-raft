@@ -20,5 +20,6 @@ requires "stew >= 0.1.0"
 requires "nimcrypto >= 0.5.4"
 requires "unittest2 >= 0.0.4"
 requires "chronicles >= 0.10.2"
+requires "fsm.nim >= 0.1.0"
 
 # Helper functions

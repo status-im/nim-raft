@@ -43,6 +43,17 @@
       "checksums": {
         "sha1": "f76c87707cd4e96355b8bb6ef27e7f8b0aac1e08"
       }
+    },
+    ,
+    "fsm.nim": {
+      "version": "0.1.1",
+      "vcsRevision": "ca6e14a5562e46805ed89593cb63bf6236939772",
+      "url": "https://github.com/ba0f3/fsm.nim",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "f76c87707cd4e96355b8bb6ef27e7f8b0aac1e08"
+      }
     }
   }
 }
