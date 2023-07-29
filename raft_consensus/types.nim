@@ -78,7 +78,7 @@ type
         msg_send_callback: RAFTMessageSendCallback
         persistent_storage: RAFTNodePersistentStorage
 
-        # Node Persistent state
+        # Persistent state
         id: RAFTNodeId                          # This RAFT Node ID
         state: RAFTNodeState                    # This RAFT Node State
         current_term: RAFTNodeTerm              # Latest term this RAFT Node has seen (initialized to 0 on first boot, increases monotonically)
