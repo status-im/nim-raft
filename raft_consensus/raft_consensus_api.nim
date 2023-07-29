@@ -7,8 +7,8 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
-import types
-export types
+import types, protocol
+export types, protocol
 
 # RAFT Node Public API procedures / functions
 proc RAFTNodeCreateNew*(id: RAFTNodeId, peers: RAFTNodePeers, state_machine: RAFTNodeStateMachine,                       # Create New RAFT Node

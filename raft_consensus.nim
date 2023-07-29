@@ -11,4 +11,4 @@ import
   raft_consensus/raft_consensus_api
 
 export
-  raft_consensus_api, types
+  raft_consensus_api, types, protocol
