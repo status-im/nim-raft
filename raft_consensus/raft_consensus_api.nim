@@ -20,7 +20,7 @@ proc RAFTNodeCreateNew*(id: RAFTNodeId, peers: RAFTNodePeers, state_machine: RAF
     discard
 
 proc RAFTNodeLoad*(state_machine: RAFTNodeStateMachine, log: RAFTNodeLog,                                                # Load RAFT Node From Storage
-                  persistent_storage: RAFTNodePersistentStorage, msg_send_callback: RAFTMessageSendCallback): RAFTNode =
+                  persistent_storage: RAFTNodePersistentStorage, msg_send_callback: RAFTMessageSendCallback): Result[RAFTNode, string] =
     discard
 
 proc RAFTNodeStop*(node: RAFTNode) =
