@@ -1,0 +1,36 @@
+[submodule "vendor/nim-chronicles"]
+  path = vendor/nim-chronicles
+  url = https://github.com/status-im/nim-chronicles.git
+  ignore = dirty
+  branch = master
+[submodule "vendor/nimcrypto"]
+  path = vendor/nimcrypto
+  url = https://github.com/cheatfate/nimcrypto.git
+  ignore = dirty
+  branch = master
+[submodule "vendor/nim-rocksdb"]
+  path = vendor/nim-rocksdb
+  url = https://github.com/status-im/nim-rocksdb.git
+  ignore = dirty
+  branch = master
+[submodule "vendor/nim-eth"]
+  path = vendor/nim-eth
+  url = https://github.com/status-im/nim-eth.git
+  ignore = dirty
+  branch = master
+[submodule "vendor/nim-stew"]
+  path = vendor/nim-stew
+  url = https://github.com/status-im/nim-stew.git
+  ignore = dirty
+  branch = master
+[submodule "vendor/nim-unittest2"]
+  path = vendor/nim-unittest2
+  url = https://github.com/stefantalpalaru/nim-unittest2.git
+  ignore = dirty
+  branch = master
+[submodule "vendor/nim-metrics"]
+[submodule "vendor/nim-taskpools"]
+	path = vendor/nim-taskpools
+	url = https://github.com/status-im/nim-taskpools.git
+	ignore = untracked
+	branch = stable
