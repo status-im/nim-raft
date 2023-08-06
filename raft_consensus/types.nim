@@ -27,7 +27,7 @@ type
     RAFTLogIndex* = uint64                      # RAFT Node Log Index Type
 
     # RAFT Node State Machine basic definitions
-    RAFTNodeStateMachineState* = object         # State Machine State
+    mixin RAFTNodeStateMachineState* = object   # State Machine State
     RAFTNodeStateMachine* = ref object          # Some probably opaque State Machine Impelementation to be used by the RAFT Node
                                                 # providing at minimum operations for initialization, querying the current state
                                                 # and RAFTNodeLogEntry application
@@ -55,14 +55,16 @@ type
     RAFTMessageSendCallback* = proc (raft_message: RAFTMessageBase) {.nimcall, gcsafe.} # Callback for Sending RAFT Node Messages
                                                                                         # out of this RAFT Node. Can be used for broadcasting
                                                                                         # (a Heart-Beat for example)
-    RAFTNodeLog* = ref object                   # Needs more elaborate definition. Probably this will be a RocksDB/MDBX/SQLite Store Wrapper etc.
-        log_data*: seq[RAFTNodeLogEntry]        # RAFT Node Log Data
 
     # RAFT Node basic Log definitions
     RAFTNodeLogEntry* = ref object              # Abstarct RAFT Node Log entry containing opaque binary data (Blob)
         term*: RAFTNodeTerm
         data*: Blob
 
+    RAFTNodeLog* = ref object                   # Needs more elaborate definition. Probably this will be a RocksDB/MDBX/SQLite Store Wrapper etc.
+        log_data*: seq[RAFTNodeLogEntry]        # RAFT Node Log Data
+    
+    # Base typoe for RAFT message objects
     RAFTMessageBase* = ref object of RootObj    # Base Type for RAFT Node Messages
         msg_id*: RAFTMessageId                  # Message UUID
         sender_id*: RAFTNodeId                  # Sender RAFT Node ID
