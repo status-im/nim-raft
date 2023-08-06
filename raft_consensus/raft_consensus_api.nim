@@ -9,7 +9,6 @@
 
 import types
 import protocol
-import stew/results
 
 export types, protocol
 

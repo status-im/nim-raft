@@ -11,6 +11,10 @@
 # I guess that at some point these can be moved to a separate file called raft_consensus_types.nim for example
 
 import std/locks
+import stew/results
+import eth/keyfile
+
+export results, UUID
 
 type
     # RAFT Node basic definitions
@@ -21,13 +25,13 @@ type
         FOLLOWER    = 1,
         LEADER      = 2
 
-    RAFTNodeId* = object                        # Some kind of UUID uniquely identifying every RAFT Node
+    RAFTNodeId* = UUID                          # UUID uniquely identifying every RAFT Node
     RAFTNodePeers* = seq[RAFTNodeId]            # List of RAFT Node Peers IDs
     RAFTNodeTerm* = uint64                      # RAFT Node Term Type
     RAFTLogIndex* = uint64                      # RAFT Node Log Index Type
 
     # RAFT Node State Machine basic definitions
-    RAFTNodeStateMachineState* = object   # State Machine State
+    RAFTNodeStateMachineState* = object         # State Machine State
     RAFTNodeStateMachine* = ref object          # Some probably opaque State Machine Impelementation to be used by the RAFT Node
                                                 # providing at minimum operations for initialization, querying the current state
                                                 # and RAFTNodeLogEntry application
@@ -49,7 +53,7 @@ type
         raft_node_access_callback: RAFTNodeAccessCallback
 
     # Callback for sending messages out of this RAFT Node
-    RAFTMessageId* = object                     # Some Kind of UUID assigned to every RAFT Node Message,
+    RAFTMessageId* = UUID                       # UUID assigned to every RAFT Node Message,
                                                 # so it can be matched with it's coresponding response etc.
 
     RAFTMessageSendCallback* = proc (raft_message: RAFTMessageBase) {.nimcall, gcsafe.} # Callback for Sending RAFT Node Messages
