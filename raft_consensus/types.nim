@@ -27,7 +27,7 @@ type
     RAFTLogIndex* = uint64                      # RAFT Node Log Index Type
 
     # RAFT Node State Machine basic definitions
-    mixin RAFTNodeStateMachineState* = object   # State Machine State
+    RAFTNodeStateMachineState* = object   # State Machine State
     RAFTNodeStateMachine* = ref object          # Some probably opaque State Machine Impelementation to be used by the RAFT Node
                                                 # providing at minimum operations for initialization, querying the current state
                                                 # and RAFTNodeLogEntry application
@@ -44,7 +44,7 @@ type
 
     RAFTLogCompactionModule* = object of RootObj
         raft_node_access_callback: RAFTNodeAccessCallback
-    
+
     RAFTMembershipChangeModule* = object of RootObj
         raft_node_access_callback: RAFTNodeAccessCallback
 
@@ -63,7 +63,7 @@ type
 
     RAFTNodeLog* = ref object                   # Needs more elaborate definition. Probably this will be a RocksDB/MDBX/SQLite Store Wrapper etc.
         log_data*: seq[RAFTNodeLogEntry]        # RAFT Node Log Data
-    
+
     # Base typoe for RAFT message objects
     RAFTMessageBase* = ref object of RootObj    # Base Type for RAFT Node Messages
         msg_id*: RAFTMessageId                  # Message UUID
@@ -103,12 +103,12 @@ type
                                                 # makes sense for the moment
         state_machine: RAFTNodeStateMachine     # Not sure for now putting it here. I assume that persisting the State Machine's state is enough
                                                 # to consider it 'persisted'
-        
+
         # Volatile state
         commit_index: RAFTLogIndex              # Index of highest log entry known to be committed (initialized to 0, increases monotonically)
         last_applied: RAFTLogIndex              # Index of highest log entry applied to state machine (initialized to 0, increases monotonically)
         current_leader_id: RAFTNodeId           # Current RAFT Node Leader ID (used to redirect Client Requests in case this RAFT Node is not the leader)
-        
+
         # Volatile state on leaders
         next_index: seq[RAFTLogIndex]           # For each peer RAFT Node, index of the next log entry to send to that Node
                                                 # (initialized to leader last log index + 1)

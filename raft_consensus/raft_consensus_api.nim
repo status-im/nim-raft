@@ -9,7 +9,7 @@
 
 import types
 import protocol
-import stew
+# import stew
 
 export types, protocol
 
@@ -53,7 +53,7 @@ proc RAFTNodeRequest*(node: RAFTNode, req: RAFTNodeClientRequest): RAFTNodeClien
 proc RAFTNodeLogLenGet*(node: RAFTNode): RAFTLogIndex =
     discard
 
-proc RAFTNodeLogentryGet*(node: RAFTLogIndex): Result[RAFTNodeLogEntry, string] =
+proc RAFTNodeLogEntryGet*(node: RAFTLogIndex): Result[RAFTNodeLogEntry, string] =
     discard
 
 proc RAFTNodeStateMachineStateGet*(node: RAFTNode): RAFTNodeStateMachineState =
