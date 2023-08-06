@@ -14,7 +14,7 @@ import std/locks
 import stew/results
 import eth/keyfile
 
-export results, UUID
+export results
 
 type
     # RAFT Node basic definitions
