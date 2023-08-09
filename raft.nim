@@ -1,4 +1,4 @@
-# nim-raft-consesnsus
+# nim-raft
 # Copyright (c) 2023 Status Research & Development GmbH
 # Licensed under either of
 #  * Apache License, version 2.0, ([LICENSE-APACHE](LICENSE-APACHE))
@@ -8,7 +8,7 @@
 # those terms.
 
 import
-  raft_consensus/raft_consensus_api
+  raft/raft_api
 
 export
-  raft_consensus_api, types, protocol
+  raft_api, types, protocol

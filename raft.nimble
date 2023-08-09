@@ -1,4 +1,4 @@
-# nim-raft-consensus
+# nim-raft
 # Copyright (c) 2023 Status Research & Development GmbH
 # Licensed under either of
 #  * Apache License, version 2.0, ([LICENSE-APACHE](LICENSE-APACHE))
@@ -9,7 +9,7 @@
 
 mode = ScriptMode.Verbose
 
-packageName   = "raft_consensus"
+packageName   = "raft"
 version       = "0.0.1"
 author        = "Status Research & Development GmbH"
 description   = "raft consensus in nim"
@@ -21,6 +21,7 @@ requires "stew >= 0.1.0"
 requires "nimcrypto >= 0.5.4"
 requires "unittest2 >= 0.0.4"
 requires "chronicles >= 0.10.2"
-requires "nim-eth >= 1.0.0"
+requires "eth >= 1.0.0"
+requires "chronos >= 3.2.0"
 
 # Helper functions

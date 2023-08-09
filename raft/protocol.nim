@@ -1,4 +1,4 @@
-# nim-raft-consesnsus
+# nim-raft
 # Copyright (c) 2023 Status Research & Development GmbH
 # Licensed under either of
 #  * Apache License, version 2.0, ([LICENSE-APACHE](LICENSE-APACHE))
@@ -10,36 +10,39 @@
                         #                                       #
                         #   RAFT Messages Protocol definition   #
                         #                                       #
+import options
 import types
 
 type
-    # RAFT Node Messages definitions
+    # RAFT Node Messages OPs
     RAFTMessageOps* = enum
         REQUEST_VOTE        = 0,
         APPEND_LOG_ENTRY    = 1,
         INSTALL_SNAPSHOT    = 2                 # For dynamic adding of new RAFT Nodes
 
     RAFTMessagePayloadChecksum* = object        # Checksum probably will be a SHA3 hash not sure about this at this point
-    RAFTMessagePayload* = ref object
-        data*: RAFTNodeLogEntry
+    RAFTMessagePayload*[LogEntryDataType] = ref object
+        data*: RAFTNodeLogEntry[LogEntryDataType]
         checksum*: RAFTMessagePayloadChecksum
 
-    RAFTMessage* = ref object of RAFTMessageBase
+    RAFTMessage*[LogEntryDataType] = ref object of RAFTMessageBase
         op*: RAFTMessageOps                     # Message Op - Ask For Votes, Append Entry(ies) or Install Snapshot
-        payload*: seq[RAFTMessagePayload]       # Message Payload(s) - e.g. log entry(ies) etc. Will be empty for a Heart-Beat                                            # Heart-Beat will be a message with Append Entry(ies) Op and empty payload
+        payload*: Option[seq[RAFTMessagePayload[LogEntryDataType]]]       # Optional Message Payload(s) - e.g. log entry(ies). Will be empty for a Heart-Beat                                            # Heart-Beat will be a message with Append Entry(ies) Op and empty payload
 
-    RAFTMessageResponse* = ref object of RAFTMessageBase
+    RAFTMessageResponse*[SMStateType] = ref object of RAFTMessageBase
         success*: bool                          # Indicates success/failure
+        state*: Option[SMStateType]             # RAFT Abstract State Machine State
 
     # RAFT Node Client Request/Response definitions
     RAFTNodeClientRequestOps = enum
         REQUEST_STATE       = 0,
         APPEND_NEW_ENTRY    = 1
 
-    RAFTNodeClientRequest* = ref object
+    RAFTNodeClientRequest*[LogEntryDataType] = ref object
         op*: RAFTNodeClientRequestOps
-        payload*: RAFTNodeLogEntry
+        payload*: Option[RAFTMessagePayload[LogEntryDataType]]  # Optional RAFTMessagePayload carrying a Log Entry
 
-    RAFTNodeClientResponse* = ref object
-        success*: bool                              # Indicate succcess
-        raft_node_redirect_id*: RAFTNodeId          # RAFT Node ID to redirect the request to in case of failure
+    RAFTNodeClientResponse*[SMStateType] = ref object
+        success*: bool                                      # Indicate succcess
+        state*: Option[SMStateType]                         # Optional RAFT Abstract State Machine State
+        raft_node_redirect_id*: Option[RAFTNodeId]          # Optional RAFT Node ID to redirect the request to in case of failure
