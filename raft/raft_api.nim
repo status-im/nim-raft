@@ -17,55 +17,54 @@ proc RAFTNodeCreateNew*[LogEntryDataType, SMStateType](                     # Cr
                   id: RAFTNodeId, peers: RAFTNodePeers,
                   persistent_storage: RAFTNodePersistentStorage,
                   msg_send_callback: RAFTMessageSendCallback): RAFTNode[LogEntryDataType, SMStateType] =
-    discard
+  discard
 
 proc RAFTNodeLoad*[LogEntryDataType, SMStateType](
                   persistent_storage: RAFTNodePersistentStorage,            # Load RAFT Node From Storage
                   msg_send_callback: RAFTMessageSendCallback): Result[RAFTNode[LogEntryDataType, SMStateType], string] =
-    discard
+  discard
 
 proc RAFTNodeStop*(node: RAFTNode) =
-    discard
+  discard
 
 proc RAFTNodeStart*(node: RAFTNode) =
-    discard
+  discard
 
 func RAFTNodeIdGet*(node: RAFTNode): RAFTNodeId =                   # Get RAFT Node ID
-    discard
+  discard
 
 func RAFTNodeStateGet*(node: RAFTNode): RAFTNodeState =             # Get RAFT Node State
     discard
 
 func RAFTNodeTermGet*(node: RAFTNode): RAFTNodeTerm =               # Get RAFT Node Term
-    discard
+  discard
 
 func RAFTNodePeersGet*(node: RAFTNode): RAFTNodePeers =             # Get RAFT Node Peers
-    discard
+  discard
 
 func RAFTNodeIsLeader*(node: RAFTNode): bool =                      # Check if RAFT Node is Leader
-    discard
+  discard
 
 proc RAFTNodeMessageDeliver*(node: RAFTNode, raft_message: RAFTMessageBase): RAFTMessageResponse {.discardable.} =      # Deliver RAFT Message to the RAFT Node
-    discard
+  discard
 
 proc RAFTNodeRequest*(node: RAFTNode, req: RAFTNodeClientRequest): RAFTNodeClientResponse =                             # Process RAFTNodeClientRequest
-    discard
+  discard
 
 proc RAFTNodeLogIndexGet*(node: RAFTNode): RAFTLogIndex =
-    node.log_index
-    discard
+  discard
 
 proc RAFTNodeLogEntryGet*(node: RAFTNode, log_index: RAFTLogIndex): Result[RAFTNodeLogEntry, string] =
-    discard
+  discard
 
 # Abstract State Machine Ops
 func RAFTNodeSMStateGet*[LogEntryDataType, SMStateType](node: RAFTNode[LogEntryDataType, SMStateType]): SMStateType =
-    node.state_machine.state
+  node.stateMachine.state
 
 proc RAFTNodeSMInit[LogEntryDataType, SMStateType](state_machine: var RAFTNodeStateMachine[LogEntryDataType, SMStateType]) =
-    mixin RAFTSMInit
-    RAFTSMInit(state_machine)
+  mixin RAFTSMInit
+  RAFTSMInit(state_machine)
 
 proc RAFTNodeSMApply[LogEntryDataType, SMStateType](state_machine: RAFTNodeStateMachine[LogEntryDataType, SMStateType], log_entry: LogEntryDataType) =
-    mixin RAFTSMApply
-    RAFTSMApply(state_machine, log_entry)
+  mixin RAFTSMApply
+  RAFTSMApply(state_machine, log_entry)
