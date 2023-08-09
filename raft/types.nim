@@ -21,9 +21,9 @@ type
   Blob* = seq[byte]
 
   RaftNodeState* = enum
-    UNKNOWN     = 0,
-    FOLLOWER    = 1,
-    LEADER      = 2
+    rnsUnknown = 0,
+    rnsFollower = 1,
+    rnsLeader = 2
 
   RaftNodeId* = UUID                          # UUID uniquely identifying every Raft Node
   RaftNodePeers* = seq[RaftNodeId]            # List of Raft Node Peers IDs
