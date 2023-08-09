@@ -12,59 +12,59 @@ import protocol
 
 export types, protocol
 
-# RAFT Node Public API procedures / functions
-proc RAFTNodeCreateNew*[LogEntryDataType, SMStateType](                     # Create New RAFT Node
-                  id: RAFTNodeId, peers: RAFTNodePeers,
-                  persistent_storage: RAFTNodePersistentStorage,
-                  msg_send_callback: RAFTMessageSendCallback): RAFTNode[LogEntryDataType, SMStateType] =
+# Raft Node Public API procedures / functions
+proc RaftNodeCreateNew*[LogEntryDataType, SmStateType](                     # Create New Raft Node
+                  id: RaftNodeId, peers: RaftNodePeers,
+                  persistentStorage: RaftNodePersistentStorage,
+                  msgSendCallback: RaftMessageSendCallback): RaftNode[LogEntryDataType, SmStateType] =
   discard
 
-proc RAFTNodeLoad*[LogEntryDataType, SMStateType](
-                  persistent_storage: RAFTNodePersistentStorage,            # Load RAFT Node From Storage
-                  msg_send_callback: RAFTMessageSendCallback): Result[RAFTNode[LogEntryDataType, SMStateType], string] =
+proc RaftNodeLoad*[LogEntryDataType, SmStateType](
+                  persistentStorage: RaftNodePersistentStorage,            # Load Raft Node From Storage
+                  msgSendCallback: RaftMessageSendCallback): Result[RaftNode[LogEntryDataType, SmStateType], string] =
   discard
 
-proc RAFTNodeStop*(node: RAFTNode) =
+proc RaftNodeStop*(node: RaftNode) =
   discard
 
-proc RAFTNodeStart*(node: RAFTNode) =
+proc RaftNodeStart*(node: RaftNode) =
   discard
 
-func RAFTNodeIdGet*(node: RAFTNode): RAFTNodeId =                   # Get RAFT Node ID
+func RaftNodeIdGet*(node: RaftNode): RaftNodeId =                   # Get Raft Node ID
   discard
 
-func RAFTNodeStateGet*(node: RAFTNode): RAFTNodeState =             # Get RAFT Node State
+func RaftNodeStateGet*(node: RaftNode): RaftNodeState =             # Get Raft Node State
     discard
 
-func RAFTNodeTermGet*(node: RAFTNode): RAFTNodeTerm =               # Get RAFT Node Term
+func RaftNodeTermGet*(node: RaftNode): RaftNodeTerm =               # Get Raft Node Term
   discard
 
-func RAFTNodePeersGet*(node: RAFTNode): RAFTNodePeers =             # Get RAFT Node Peers
+func RaftNodePeersGet*(node: RaftNode): RaftNodePeers =             # Get Raft Node Peers
   discard
 
-func RAFTNodeIsLeader*(node: RAFTNode): bool =                      # Check if RAFT Node is Leader
+func RaftNodeIsLeader*(node: RaftNode): bool =                      # Check if Raft Node is Leader
   discard
 
-proc RAFTNodeMessageDeliver*(node: RAFTNode, raft_message: RAFTMessageBase): RAFTMessageResponse {.discardable.} =      # Deliver RAFT Message to the RAFT Node
+proc RaftNodeMessageDeliver*(node: RaftNode, raftMessage: RaftMessageBase): RaftMessageResponse {.discardable.} =      # Deliver Raft Message to the Raft Node
   discard
 
-proc RAFTNodeRequest*(node: RAFTNode, req: RAFTNodeClientRequest): RAFTNodeClientResponse =                             # Process RAFTNodeClientRequest
+proc RaftNodeRequest*(node: RaftNode, req: RaftNodeClientRequest): RaftNodeClientResponse =                             # Process RaftNodeClientRequest
   discard
 
-proc RAFTNodeLogIndexGet*(node: RAFTNode): RAFTLogIndex =
+proc RaftNodeLogIndexGet*(node: RaftNode): RaftLogIndex =
   discard
 
-proc RAFTNodeLogEntryGet*(node: RAFTNode, log_index: RAFTLogIndex): Result[RAFTNodeLogEntry, string] =
+proc RaftNodeLogEntryGet*(node: RaftNode, logIndex: RaftLogIndex): Result[RaftNodeLogEntry, string] =
   discard
 
 # Abstract State Machine Ops
-func RAFTNodeSMStateGet*[LogEntryDataType, SMStateType](node: RAFTNode[LogEntryDataType, SMStateType]): SMStateType =
+func RaftNodeSmStateGet*[LogEntryDataType, SmStateType](node: RaftNode[LogEntryDataType, SmStateType]): SmStateType =
   node.stateMachine.state
 
-proc RAFTNodeSMInit[LogEntryDataType, SMStateType](state_machine: var RAFTNodeStateMachine[LogEntryDataType, SMStateType]) =
-  mixin RAFTSMInit
-  RAFTSMInit(state_machine)
+proc RaftNodeSmInit[LogEntryDataType, SmStateType](stateMachine: var RaftNodeStateMachine[LogEntryDataType, SmStateType]) =
+  mixin RaftSmInit
+  RaftSmInit(stateMachine)
 
-proc RAFTNodeSMApply[LogEntryDataType, SMStateType](state_machine: RAFTNodeStateMachine[LogEntryDataType, SMStateType], log_entry: LogEntryDataType) =
-  mixin RAFTSMApply
-  RAFTSMApply(state_machine, log_entry)
+proc RaftNodeSmApply[LogEntryDataType, SmStateType](stateMachine: RaftNodeStateMachine[LogEntryDataType, SmStateType], logEntry: LogEntryDataType) =
+  mixin RaftSmApply
+  RaftSmApply(stateMachine, logEntry)

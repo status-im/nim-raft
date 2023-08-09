@@ -8,41 +8,41 @@
 # those terms.
 
                         #                                       #
-                        #   RAFT Messages Protocol definition   #
+                        #   Raft Messages Protocol definition   #
                         #                                       #
-import options
 import types
+import options
 
 type
-    # RAFT Node Messages OPs
-    RAFTMessageOps* = enum
-      REQUEST_VOTE        = 0,
-      APPEND_LOG_ENTRY    = 1,
-      INSTALL_SNAPSHOT    = 2                 # For dynamic adding of new RAFT Nodes
+    # Raft Node Messages OPs
+    RaftMessageOps* = enum
+      rmoRequestVote = 0,
+      rmoAppendLogEntry = 1,
+      rmoInstallSnapshot = 2                    # For dynamic adding of new Raft Nodes
 
-    RAFTMessagePayloadChecksum* = object        # Checksum probably will be a SHA3 hash not sure about this at this point
-    RAFTMessagePayload*[LogEntryDataType] = ref object
-      data*: RAFTNodeLogEntry[LogEntryDataType]
-      checksum*: RAFTMessagePayloadChecksum
+    RaftMessagePayloadChecksum* = object        # Checksum probably will be a SHA3 hash not sure about this at this point
+    RaftMessagePayload*[LogEntryDataType] = ref object
+      data*: RaftNodeLogEntry[LogEntryDataType]
+      checksum*: RaftMessagePayloadChecksum
 
-    RAFTMessage*[LogEntryDataType] = ref object of RAFTMessageBase
-      op*: RAFTMessageOps                     # Message Op - Ask For Votes, Append Entry(ies) or Install Snapshot
-      payload*: Option[seq[RAFTMessagePayload[LogEntryDataType]]]       # Optional Message Payload(s) - e.g. log entry(ies). Will be empty for a Heart-Beat                                            # Heart-Beat will be a message with Append Entry(ies) Op and empty payload
+    RaftMessage*[LogEntryDataType] = ref object of RaftMessageBase
+      op*: RaftMessageOps                     # Message Op - Ask For Votes, Append Entry(ies) or Install Snapshot
+      payload*: Option[seq[RaftMessagePayload[LogEntryDataType]]]       # Optional Message Payload(s) - e.g. log entry(ies). Will be empty for a Heart-Beat                                            # Heart-Beat will be a message with Append Entry(ies) Op and empty payload
 
-    RAFTMessageResponse*[SMStateType] = ref object of RAFTMessageBase
+    RaftMessageResponse*[SmStateType] = ref object of RaftMessageBase
       success*: bool                          # Indicates success/failure
-      state*: Option[SMStateType]             # RAFT Abstract State Machine State
+      state*: Option[SmStateType]             # Raft Abstract State Machine State
 
-    # RAFT Node Client Request/Response definitions
-    RAFTNodeClientRequestOps = enum
-      REQUEST_STATE       = 0,
-        APPEND_NEW_ENTRY    = 1
+    # Raft Node Client Request/Response definitions
+    RaftNodeClientRequestOps = enum
+      rncroRequestState = 0,
+      rncroAppendNewEntry = 1
 
-    RAFTNodeClientRequest*[LogEntryDataType] = ref object
-      op*: RAFTNodeClientRequestOps
-      payload*: Option[RAFTMessagePayload[LogEntryDataType]]  # Optional RAFTMessagePayload carrying a Log Entry
+    RaftNodeClientRequest*[LogEntryDataType] = ref object
+      op*: RaftNodeClientRequestOps
+      payload*: Option[RaftMessagePayload[LogEntryDataType]]  # Optional RaftMessagePayload carrying a Log Entry
 
-    RAFTNodeClientResponse*[SMStateType] = ref object
+    RaftNodeClientResponse*[SmStateType] = ref object
       success*: bool                                      # Indicate succcess
-      state*: Option[SMStateType]                         # Optional RAFT Abstract State Machine State
-      raft_node_redirect_id*: Option[RAFTNodeId]          # Optional RAFT Node ID to redirect the request to in case of failure
+      state*: Option[SmStateType]                         # Optional Raft Abstract State Machine State
+      raftNodeRedirectId*: Option[RaftNodeId]          # Optional Raft Node ID to redirect the request to in case of failure
