@@ -26,7 +26,7 @@ type
       checksum*: RaftMessagePayloadChecksum
 
     RaftMessage*[LogEntryDataType] = ref object of RaftMessageBase
-      op*: RaftMessageOps                     # Message Op - Ask For Votes, Append Entry(ies) or Install Snapshot
+      op*: RaftMessageOps                       # Message Op - Ask For Votes, Append Entry(ies), Install Snapshot etc.
       payload*: Option[seq[RaftMessagePayload[LogEntryDataType]]]       # Optional Message Payload(s) - e.g. log entry(ies). Will be empty for a Heart-Beat                                            # Heart-Beat will be a message with Append Entry(ies) Op and empty payload
 
     RaftMessageResponse*[SmStateType] = ref object of RaftMessageBase
@@ -45,4 +45,4 @@ type
     RaftNodeClientResponse*[SmStateType] = ref object
       success*: bool                                      # Indicate succcess
       state*: Option[SmStateType]                         # Optional Raft Abstract State Machine State
-      raftNodeRedirectId*: Option[RaftNodeId]          # Optional Raft Node ID to redirect the request to in case of failure
+      raftNodeRedirectId*: Option[RaftNodeId]             # Optional Raft Node ID to redirect the request to in case of failure

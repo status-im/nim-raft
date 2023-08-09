@@ -10,7 +10,7 @@
     
     *Duration: 3 weeks (2 weeks for implementation, 1 week for test creation/testing)*
 
-3. Integrate the RAFT library in the Nimbus project - define p2p networking deal with serialization etc. Create relevant tests.  I guess it is a good idea to add some kind of basic RAFT Node metrics. Optionally implement some of the following enhancements (if relevant):
+3. Integrate the RAFT library in the Nimbus project - define p2p networking deal with serialization etc. Create relevant tests.  I guess it is a good idea to add some kind of basic RAFT Node metrics. Optionally implement some of the following enhancements (if appropriate):
     - Optimistic pipelining to reduce log replication latency
     - Writing to leader's disk in parallel
     - Automatic stepping down when the leader loses quorum
