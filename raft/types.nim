@@ -40,17 +40,17 @@ type
   RaftNodePersistentStorage* = ref object     # Should be some kind of Persistent Transactional Store Wrapper
 
   # Basic modules (algos) definitions
-  RaftNodeAccessCallback[LogEntryDataType] = proc: RaftNode[LogEntryDataType] {.nimcall, gcsafe.}     # This should be implementes as a closure holding the RaftNode
+  RaftNodeAccessCallback[LogEntryDataType, SmStateType] = proc: RaftNode[LogEntryDataType, SmStateType] {.nimcall, gcsafe.}     # This should be implementes as a closure holding the RaftNode
 
-  RaftConsensusModule*[LogEntryDataType] = object of RootObj
+  RaftConsensusModule*[LogEntryDataType, SmStateType] = object of RootObj
     stateTransitionsFsm: seq[byte]            # I plan to use nim.fsm https://github.com/ba0f3/fsm.nim
-    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType]
+    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType, SmStateType]
 
-  RaftLogCompactionModule*[LogEntryDataType] = object of RootObj
-    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType]
+  RaftLogCompactionModule*[LogEntryDataType, SmStateType] = object of RootObj
+    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType, SmStateType]
 
-  RaftMembershipChangeModule*[LogEntryDataType] = object of RootObj
-    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType]
+  RaftMembershipChangeModule*[LogEntryDataType, SmStateType] = object of RootObj
+    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType, SmStateType]
 
   # Callback for sending messages out of this Raft Node
   RaftMessageId* = UUID                       # UUID assigned to every Raft Node Message,
@@ -90,9 +90,9 @@ type
     raftCommMutexClientResponse: Lock
 
     # Modules (Algos)
-    consensusModule: RaftConsensusModule[LogEntryDataType]
-    logCompactionModule: RaftLogCompactionModule[LogEntryDataType]
-    membershipChangeModule: RaftMembershipChangeModule[LogEntryDataType]
+    consensusModule: RaftConsensusModule[LogEntryDataType, SmStateType]
+    logCompactionModule: RaftLogCompactionModule[LogEntryDataType, SmStateType]
+    membershipChangeModule: RaftMembershipChangeModule[LogEntryDataType, SmStateType]
 
     # Misc
     msgSendCallback: RaftMessageSendCallback
