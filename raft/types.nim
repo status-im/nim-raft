@@ -13,6 +13,7 @@
 import std/locks
 import stew/results
 import eth/keyfile
+import std/sets
 
 export results
 
@@ -76,12 +77,14 @@ type
     senderTerm*: RaftNodeTerm              # Sender Raft Node Term
     peers*: RaftNodePeers                  # List of Raft Node IDs, which should receive this message
 
+  # Timer types
+  TimerId* = UUID
+  RaftTimerCallback* = proc (timerId: TimerId) {.nimcall, gcsafe.}   # Pass any function wrapped in a closure
+
   # Raft Node Object type
   RaftNode*[LogEntryDataType, SmStateType] = ref object
     # Timers
-    votingTimout: uint64
-    heartBeatTimeout: uint64
-    # etc. timers
+    activeTimers: HashSet[TimerId]
 
     # Mtx definitions go here
     raftStateMutex: Lock
