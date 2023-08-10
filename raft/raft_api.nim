@@ -70,15 +70,15 @@ proc RaftNodeSmApply[LogEntryDataType, SmStateType](stateMachine: RaftNodeStateM
   RaftSmApply(stateMachine, logEntry)
 
 # Timer manipulation
-proc RaftCreateTimer*[TimerDurationType](d: TimerDurationType, repeat: bool, timer_callback: RaftTimerCallback): TimerId =   # I guess Duration should be monotonic
-  mixin RaftCreateTimerCustomImpl
-  RaftCreateTimerCustomImpl(d, repeat, timer_callback)
+proc RaftTimerCreate*[TimerDurationType](d: TimerDurationType, repeat: bool, timer_callback: RaftTimerCallback): TimerId =   # I guess Duration should be monotonic
+  mixin RaftTimerCreateCustomImpl
+  RaftTimerCreateCustomImpl(d, repeat, timer_callback)
 
-template RaftCancelTimer*(TimerId) =
-  mixin RaftCancelTimerCustomImpl
-  RaftCancelTimerCustomImpl(TimerId)
+template RaftTimerCancel*(TimerId) =
+  mixin RaftTimerCancelCustomImpl
+  RaftTimerCancelCustomImpl(TimerId)
 
-template RaftIsExpiredTimer*(TimerId): bool =
-  mixin RaftIsExpiredTimerImpl
-  RaftIsExpiredTimerImpl(TimerId)
+template RaftTimerIsExpired*(TimerId): bool =
+  mixin RaftTimerIsExpiredImpl
+  RaftTimerIsExpiredImpl(TimerId)
 
