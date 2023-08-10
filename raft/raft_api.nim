@@ -77,3 +77,8 @@ proc RaftCreateTimer*[TimerDurationType](d: TimerDurationType, repeat: bool, tim
 template RaftCancelTimer*(TimerId) =
   mixin RaftCancelTimerCustomImpl
   RaftCancelTimerCustomImpl(TimerId)
+
+template RaftIsExpiredTimer*(TimerId): bool =
+  mixin RaftIsExpiredTimerImpl
+  RaftIsExpiredTimerImpl(TimerId)
+
