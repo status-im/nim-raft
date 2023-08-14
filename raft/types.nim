@@ -13,6 +13,7 @@
 import std/locks
 import stew/results
 import eth/keyfile
+import std/sets
 
 export results
 
@@ -40,17 +41,17 @@ type
   RaftNodePersistentStorage* = ref object     # Should be some kind of Persistent Transactional Store Wrapper
 
   # Basic modules (algos) definitions
-  RaftNodeAccessCallback[LogEntryDataType] = proc: RaftNode[LogEntryDataType] {.nimcall, gcsafe.}     # This should be implementes as a closure holding the RaftNode
+  RaftNodeAccessCallback[LogEntryDataType, SmStateType] = proc: RaftNode[LogEntryDataType, SmStateType] {.nimcall, gcsafe.}     # This should be implementes as a closure holding the RaftNode
 
-  RaftConsensusModule*[LogEntryDataType] = object of RootObj
+  RaftConsensusModule*[LogEntryDataType, SmStateType] = object of RootObj
     stateTransitionsFsm: seq[byte]            # I plan to use nim.fsm https://github.com/ba0f3/fsm.nim
-    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType]
+    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType, SmStateType]
 
-  RaftLogCompactionModule*[LogEntryDataType] = object of RootObj
-    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType]
+  RaftLogCompactionModule*[LogEntryDataType, SmStateType] = object of RootObj
+    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType, SmStateType]
 
-  RaftMembershipChangeModule*[LogEntryDataType] = object of RootObj
-    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType]
+  RaftMembershipChangeModule*[LogEntryDataType, SmStateType] = object of RootObj
+    raftNodeAccessCallback: RaftNodeAccessCallback[LogEntryDataType, SmStateType]
 
   # Callback for sending messages out of this Raft Node
   RaftMessageId* = UUID                       # UUID assigned to every Raft Node Message,
@@ -76,12 +77,14 @@ type
     senderTerm*: RaftNodeTerm              # Sender Raft Node Term
     peers*: RaftNodePeers                  # List of Raft Node IDs, which should receive this message
 
+  # Timer types
+  TimerId* = UUID
+  RaftTimerCallback* = proc (timerId: TimerId) {.nimcall, gcsafe.}   # Pass any function wrapped in a closure
+
   # Raft Node Object type
   RaftNode*[LogEntryDataType, SmStateType] = ref object
     # Timers
-    votingTimout: uint64
-    heartBeatTimeout: uint64
-    # etc. timers
+    activeTimers: HashSet[TimerId]
 
     # Mtx definitions go here
     raftStateMutex: Lock
@@ -90,9 +93,9 @@ type
     raftCommMutexClientResponse: Lock
 
     # Modules (Algos)
-    consensusModule: RaftConsensusModule[LogEntryDataType]
-    logCompactionModule: RaftLogCompactionModule[LogEntryDataType]
-    membershipChangeModule: RaftMembershipChangeModule[LogEntryDataType]
+    consensusModule: RaftConsensusModule[LogEntryDataType, SmStateType]
+    logCompactionModule: RaftLogCompactionModule[LogEntryDataType, SmStateType]
+    membershipChangeModule: RaftMembershipChangeModule[LogEntryDataType, SmStateType]
 
     # Misc
     msgSendCallback: RaftMessageSendCallback
