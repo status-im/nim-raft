@@ -18,10 +18,7 @@ skipDirs      = @["tests"]
 
 requires "nim >= 1.6.0"
 requires "stew >= 0.1.0"
-requires "nimcrypto >= 0.5.4"
 requires "unittest2 >= 0.0.4"
-requires "chronicles >= 0.10.2"
-requires "eth >= 1.0.0"
-requires "chronos >= 3.2.0"
+requires "uuid4 >= 0.9.3"
 
 # Helper functions

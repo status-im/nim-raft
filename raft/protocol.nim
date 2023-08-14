@@ -7,11 +7,10 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
-                        #                                       #
-                        #   Raft Messages Protocol definition   #
-                        #                                       #
+                        #                              #
+                        #   Raft Protocol definition   #
+                        #                              #
 import types
-import options
 
 type
   # Raft Node Messages OPs
@@ -20,29 +19,49 @@ type
     rmoAppendLogEntry = 1,
     rmoInstallSnapshot = 2                    # For dynamic adding of new Raft Nodes
 
-  RaftMessagePayloadChecksum* = object        # Checksum probably will be a SHA3 hash not sure about this at this point
-  RaftMessagePayload*[LogEntryDataType] = ref object
-    data*: RaftNodeLogEntry[LogEntryDataType]
-    checksum*: RaftMessagePayloadChecksum
+  RaftMessageRespoonseError* = enum           # Raft message response errors
+    rmreSuccess = 0,
+    rmreFail = 1
 
-  RaftMessage*[LogEntryDataType] = ref object of RaftMessageBase
-    op*: RaftMessageOps                       # Message Op - Ask For Votes, Append Entry(ies), Install Snapshot etc.
-    payload*: Option[seq[RaftMessagePayload[LogEntryDataType]]]       # Optional Message Payload(s) - e.g. log entry(ies). Will be empty for a Heart-Beat                                            # Heart-Beat will be a message with Append Entry(ies) Op and empty payload
+  RaftMessageResponseBase* = ref object of RootObj
+    msgId*: RaftMessageId                  # Original Message ID
+    senderId*: RaftNodeId                  # Sender Raft Node ID
+    respondentId: RaftNodeId               # Responding RaftNodeId
+    senderTerm*: RaftNodeTerm              # Sender Raft Node Term
 
-  RaftMessageResponse*[SmStateType] = ref object of RaftMessageBase
-    success*: bool                          # Indicates success/failure
-    state*: Option[SmStateType]             # Raft Abstract State Machine State
+  RaftMessageRequestVote* = ref object of RaftMessageBase
+    lastLogTerm*: RaftNodeTerm
+    lastLogIndex*: RaftLogIndex
+
+  RaftMessageRequestVoteResponse* = ref object of RaftMessageResponseBase
+    granted*: bool
+
+  RaftMessageAppendEntries*[SmCommandType] = ref object of RaftMessageBase
+    prevLogIndex*: RaftLogIndex
+    prevLogTerm*: RaftNodeTerm
+    commitIndex*: RaftLogIndex
+    logEntries*: Option[seq[RaftNodeLogEntry[SmCommandType]]]         # Optional log entry(ies). Will be empty for a Heart-Beat
+
+  RaftMessageAppendEntriesResponse*[SmStateType] = ref object of RaftMessageResponseBase
+    success*: bool
+    lastLogIndex*: RaftLogIndex
+    state*: Option[SmStateType]                                       # Optional Raft Abstract State Machine State
 
   # Raft Node Client Request/Response definitions
-  RaftNodeClientRequestOps = enum
-    rncroRequestState = 0,
-    rncroAppendNewEntry = 1
+  RaftNodeClientRequestOps* = enum
+    rncroRequestSmState = 0,
+    rncroExecSmCommand = 1
 
-  RaftNodeClientRequest*[LogEntryDataType] = ref object
+  RaftNodeClientResponseError = enum
+    rncrSuccess = 0,
+    rncrFail = 1,
+    rncrNotLeader = 2
+
+  RaftNodeClientRequest*[SmCommandType] = ref object
     op*: RaftNodeClientRequestOps
-    payload*: Option[RaftMessagePayload[LogEntryDataType]]  # Optional RaftMessagePayload carrying a Log Entry
+    payload*: Option[SmCommandType]  # Optional RaftMessagePayload carrying a Log Entry
 
   RaftNodeClientResponse*[SmStateType] = ref object
-    success*: bool                                      # Indicate succcess
+    error*: RaftNodeClientResponseError
     state*: Option[SmStateType]                         # Optional Raft Abstract State Machine State
     raftNodeRedirectId*: Option[RaftNodeId]             # Optional Raft Node ID to redirect the request to in case of failure

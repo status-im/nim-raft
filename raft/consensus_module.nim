@@ -6,3 +6,15 @@
 # at your option.
 # This file may not be copied, modified, or distributed except according to
 # those terms.
+
+import protocol
+import types
+
+proc RaftConsensusProcessRequestVote*(consensus: RaftConsensusModule, msg: RaftMessageRequestVote): RaftMessageRequestVoteResponse =
+  discard
+
+proc RaftConsensusProcessAppendEntries*(consensus: RaftConsensusModule, msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse =
+  discard
+
+proc RaftConsensusQuorumMin(consensus: RaftConsensusModule): bool =
+  discard

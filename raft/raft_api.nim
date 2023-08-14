@@ -9,76 +9,104 @@
 
 import types
 import protocol
+import consensus_module
 
 export types, protocol
 
 # Raft Node Public API procedures / functions
-proc RaftNodeCreateNew*[LogEntryDataType, SmStateType](                     # Create New Raft Node
+proc RaftNodeCreateNew*[SmCommandType, SmStateType](                     # Create New Raft Node
                   id: RaftNodeId, peers: RaftNodePeers,
                   persistentStorage: RaftNodePersistentStorage,
-                  msgSendCallback: RaftMessageSendCallback): RaftNode[LogEntryDataType, SmStateType] =
+                  msgSendCallback: RaftMessageSendCallback): RaftNode[SmCommandType, SmStateType] =
   discard
 
-proc RaftNodeLoad*[LogEntryDataType, SmStateType](
+proc RaftNodeLoad*[SmCommandType, SmStateType](
                   persistentStorage: RaftNodePersistentStorage,            # Load Raft Node From Storage
-                  msgSendCallback: RaftMessageSendCallback): Result[RaftNode[LogEntryDataType, SmStateType], string] =
+                  msgSendCallback: RaftMessageSendCallback): Result[RaftNode[SmCommandType, SmStateType], string] =
   discard
 
-proc RaftNodeStop*(node: RaftNode) =
+proc RaftNodeStop*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   discard
 
-proc RaftNodeStart*(node: RaftNode) =
+proc RaftNodeStart*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   discard
 
-func RaftNodeIdGet*(node: RaftNode): RaftNodeId =                   # Get Raft Node ID
+func RaftNodeIdGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftNodeId =                   # Get Raft Node ID
   discard
 
-func RaftNodeStateGet*(node: RaftNode): RaftNodeState =             # Get Raft Node State
+func RaftNodeStateGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftNodeState =             # Get Raft Node State
     discard
 
-func RaftNodeTermGet*(node: RaftNode): RaftNodeTerm =               # Get Raft Node Term
+func RaftNodeTermGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftNodeTerm =               # Get Raft Node Term
   discard
 
-func RaftNodePeersGet*(node: RaftNode): RaftNodePeers =             # Get Raft Node Peers
+func RaftNodePeersGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftNodePeers =             # Get Raft Node Peers
   discard
 
-func RaftNodeIsLeader*(node: RaftNode): bool =                      # Check if Raft Node is Leader
+func RaftNodeIsLeader*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): bool =                      # Check if Raft Node is Leader
   discard
 
-proc RaftNodeMessageDeliver*(node: RaftNode, raftMessage: RaftMessageBase): RaftMessageResponse {.discardable.} =      # Deliver Raft Message to the Raft Node
+# Deliver Raft Message to the Raft Node and dispatch it
+proc RaftNodeMessageDeliver*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], raftMessage: RaftMessageBase): RaftMessageResponseBase =
   discard
 
-proc RaftNodeRequest*(node: RaftNode, req: RaftNodeClientRequest): RaftNodeClientResponse =                             # Process RaftNodeClientRequest
+# Process RaftNodeClientRequests
+proc RaftNodeClientRequest*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], req: RaftNodeClientRequest[SmCommandType]): RaftNodeClientResponse[SmStateType] =
   discard
 
-proc RaftNodeLogIndexGet*(node: RaftNode): RaftLogIndex =
+proc RaftNodeLogIndexGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftLogIndex =
   discard
 
-proc RaftNodeLogEntryGet*(node: RaftNode, logIndex: RaftLogIndex): Result[RaftNodeLogEntry, string] =
+proc RaftNodeLogEntryGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], logIndex: RaftLogIndex): Result[RaftNodeLogEntry[SmCommandType], string] =
   discard
 
 # Abstract State Machine Ops
-func RaftNodeSmStateGet*[LogEntryDataType, SmStateType](node: RaftNode[LogEntryDataType, SmStateType]): SmStateType =
+func RaftNodeSmStateGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): SmStateType =
   node.stateMachine.state
 
-proc RaftNodeSmInit[LogEntryDataType, SmStateType](stateMachine: var RaftNodeStateMachine[LogEntryDataType, SmStateType]) =
+proc RaftNodeSmInit[SmCommandType, SmStateType](stateMachine: var RaftNodeStateMachine[SmCommandType, SmStateType]) =
   mixin RaftSmInit
   RaftSmInit(stateMachine)
 
-proc RaftNodeSmApply[LogEntryDataType, SmStateType](stateMachine: RaftNodeStateMachine[LogEntryDataType, SmStateType], logEntry: LogEntryDataType) =
+proc RaftNodeSmApply[SmCommandType, SmStateType](stateMachine: RaftNodeStateMachine[SmCommandType, SmStateType], command: SmCommandType) =
   mixin RaftSmApply
-  RaftSmApply(stateMachine, logEntry)
+  RaftSmApply(stateMachine, command)
 
-# Timer manipulation
-proc RaftTimerCreate*[TimerDurationType](timerInterval: TimerDurationType, repeat: bool, timer_callback: RaftTimerCallback): TimerId =   # I guess Duration should be monotonic
+# Private Abstract Timer manipulation Ops
+proc RaftTimerCreate[TimerDurationType](timerInterval: TimerDurationType, timer_callback: RaftTimerCallback): TimerId =   # I guess Duration should be monotonic
   mixin RaftTimerCreateCustomImpl
-  RaftTimerCreateCustomImpl(timerInterval, repeat, timer_callback)
+  RaftTimerCreateCustomImpl(timerInterval, timer_callback)
 
-template RaftTimerCancel*(TimerId) =
+template RaftTimerCancel(TimerId) =
   mixin RaftTimerCancelCustomImpl
   RaftTimerCancelCustomImpl(TimerId)
 
-template RaftTimerIsExpired*(TimerId): bool =
+template RaftTimerIsExpired(TimerId): bool =
   mixin RaftTimerIsExpiredImpl
   RaftTimerIsExpiredImpl(TimerId)
 
+# Private Log Ops
+proc RaftNodeLogAppend[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], logEntry: RaftNodeLogEntry[SmCommandType]) =
+  discard
+
+proc RaftNodeLastLogIndex[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): uint64 =
+  discard
+
+proc RaftNodeLogTruncate[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], truncateIndex: uint64) =
+  discard
+
+# Private Timers Create Ops
+proc RaftNodeScheduleHeartBeat[SmCommandType, SmStateType, TimerDurationType](node: RaftNode[SmCommandType, SmStateType]): TimerId =
+  discard
+
+proc RaftNodeScheduleHeartBeatTimeout[SmCommandType, SmStateType, TimerDurationType](node: RaftNode[SmCommandType, SmStateType]): TimerId =
+  discard
+
+proc scheduleElectionTimeOut[SmCommandType, SmStateType, TimerDurationType](node: RaftNode[SmCommandType, SmStateType]): TimerId =
+  discard
+
+proc scheduleRequestVoteTimeout[SmCommandType, SmStateType, TimerDurationType](node: RaftNode[SmCommandType, SmStateType]): TimerId =
+  discard
+
+proc RaftNodeHeartBeatTimeout[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+  discard
