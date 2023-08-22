@@ -10,10 +10,8 @@
 # Raft Node Public Types
 
 import std/locks
-import std/sets
 import options
 import stew/results
-import uuid4
 
 export results, options
 
@@ -25,7 +23,7 @@ type
     rnsCandidate = 2
     rnsLeader = 3
 
-  RaftNodeId* = Uuid                          # uuid4 uniquely identifying every Raft Node
+  RaftNodeId* = uint64                        # uuid4 uniquely identifying every Raft Node
   RaftNodeTerm* = uint64                      # Raft Node Term Type
   RaftLogIndex* = uint64                      # Raft Node Log Index Type
 
@@ -55,6 +53,7 @@ type
 
   RaftConsensusModule*[SmCommandType, SmStateType] = object of RootObj
     stateTransitionsFsm: seq[byte]                              # I plan to use nim.fsm https://github.com/ba0f3/fsm.nim
+    gatheredVotesCount: int
     raftNodeAccessCallback: RaftNodeAccessCallback[SmCommandType, SmStateType]
 
   RaftLogCompactionModule*[SmCommandType, SmStateType] = object of RootObj
@@ -64,7 +63,7 @@ type
     raftNodeAccessCallback: RaftNodeAccessCallback[SmCommandType, SmStateType]
 
   # Callback for sending messages out of this Raft Node
-  RaftMessageId* = Uuid                    # UUID assigned to every Raft Node Message,
+  RaftMessageId* = uint64                  # UUID assigned to every Raft Node Message,
                                            # so it can be matched with it's corresponding response etc.
 
   RaftMessageBase* = ref object of RootObj # Base Type for Raft Protocol Messages
@@ -88,27 +87,35 @@ type
   RaftNodeLogEntry*[SmCommandType] = object     # Abstarct Raft Node Log entry containing opaque binary data (Blob etc.)
     term*: RaftNodeTerm
     index*: RaftLogIndex
-    clusterTime*: object
     entryType*: LogEntryType                        # Type of entry - data to append, configuration or no op etc.
     configuration: Option[RaftNodeConfiguration]    # Node configuration
     data*: Option[SmCommandType]                    # Entry data (State Machine Command) - this is mutually exclusive with configuration
                                                     # depending on entryType field
 
-  RaftNodeLog*[SmCommandType] = object          # Needs more elaborate definition.
+  RaftNodeLog*[SmCommandType] = object              # Needs more elaborate definition.
                                                     # Probably this will be a RocksDB/MDBX/SQLite Store Wrapper etc.
     logData*: seq[RaftNodeLogEntry[SmCommandType]]  # Raft Node Log Data
 
   # Timer types
-  TimerId* = Uuid
-  RaftTimerCallback* = proc (timerId: TimerId) {.nimcall, gcsafe.}   # Pass any function wrapped in a closure
+  RaftTimer* = object
+    mtx*: Lock
+    canceled*: bool
+    expired*: bool
+    timeout*: int
+    repeat*: bool
+
+  RaftTimerCallback* = proc (timer: var RaftTimer) {.nimcall, gcsafe.}   # Pass any function wrapped in a closure
 
   # Raft Node Object type
   RaftNode*[SmCommandType, SmStateType] = object
     # Timers
-    activeTimersSet: HashSet[TimerId]
-    requestVoteTimeout: uint64
-    heartBeatTimeOut: uint64
-    appendEntriesTimeOut: uint64
+    requestVotesTimeout: int
+    heartBeatTimeout: int
+    appendEntriesTimeout: int
+
+    requestVotesTimer: RaftTimer
+    heartBeatTimer: RaftTimer
+    appendEntriesTimer: RaftTimer
 
     # Mtx definition(s) go here
     raftStateMutex: Lock

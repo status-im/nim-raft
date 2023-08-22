@@ -53,9 +53,9 @@ type
     rncroExecSmCommand = 1
 
   RaftNodeClientResponseError = enum
-    rncrSuccess = 0,
-    rncrFail = 1,
-    rncrNotLeader = 2
+    rncreSuccess = 0,
+    rncreFail = 1,
+    rncreNotLeader = 2
 
   RaftNodeClientRequest*[SmCommandType] = ref object
     op*: RaftNodeClientRequestOps

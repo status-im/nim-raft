@@ -8,7 +8,7 @@
 # those terms.
 
 import
-  raft/api
+  raft/raft_api
 
 export
-  api, types, protocol
+  raft_api
