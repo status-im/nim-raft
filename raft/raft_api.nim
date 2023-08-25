@@ -73,9 +73,9 @@ proc RaftNodeSmApply[SmCommandType, SmStateType](stateMachine: RaftNodeStateMach
   RaftSmApply(stateMachine, command)
 
 # Private Abstract Timer manipulation Ops
-template RaftTimerCreate(timerInterval: int, repeat: bool, timerCallback: RaftTimerCallback): RaftTimer =
+template RaftTimerCreate(timerInterval: int, oneshot: bool, timerCallback: RaftTimerCallback): RaftTimer =
   mixin RaftTimerCreateCustomImpl
-  RaftTimerCreateCustomImpl(timerInterval, repeat, timerCallback)
+  RaftTimerCreateCustomImpl(timerInterval, oneshot, timerCallback)
 
 template RaftTimerCancel(timer: RaftTimer) =
   mixin RaftTimerCancelCustomImpl

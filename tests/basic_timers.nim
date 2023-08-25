@@ -18,52 +18,55 @@ var
   runningMtx: Lock
   running: bool
 
-proc RaftTimerCreateCustomImpl*(timerInterval: int, repeat: bool, timerCallback: RaftTimerCallback): RaftTimer =
+proc RaftTimerCreateCustomImpl*(timerInterval: int, oneshot: bool, timerCallback: RaftTimerCallback): RaftTimer {.nimcall, gcsafe.} =
   var
-    timer = RaftTimer(canceled: false, expired: false, timeout: timerInterval, repeat: repeat)
+    timer = RaftTimer(mtx: Lock(), canceled: false, expired: false, timeout: timerInterval, oneshot: oneshot)
+
   initLock(timer.mtx)
 
-  proc CallbackClosureProc(): Callback =
-    result = proc (fd: AsyncFD): bool {.closure, gcsafe.} =
-      withLock(timer.mtx):
-        if not timer.canceled:
-          timerCallback(timer)
-          if not timer.repeat:
-            timer.expired = true
+  addTimer(timer.timeout, timer.oneshot, proc (fd: AsyncFD): bool {.closure, gcsafe.} =
+    withLock(timer.mtx):
+      if not timer.canceled:
+        timerCallback(timer)
+        if timer.oneshot:
+          timer.expired = true
           return true
         else:
           return false
-
-  debugEcho repr(CallbackClosureProc())
-  addTimer(timer.timeout, timer.repeat, CallbackClosureProc())
+      else:
+        return true
+  )
   timer
 
-proc RaftTimerCancelCustomImpl*(timer: var RaftTimer): bool {.discardable.} =
-    withLock(timer.mtx):
-      if not timer.expired and not timer.canceled:
-        timer.canceled = true
-        return true
-      else:
-        return false
+proc RaftTimerCancelCustomImpl*(timer: RaftTimer): bool {.nimcall, gcsafe, discardable.} =
+  withLock(timer.mtx):
+    if not timer.expired and not timer.canceled:
+      timer.canceled = true
+    else:
+      return false
 
 proc RaftTimerPollThread() {.thread, nimcall, gcsafe.} =
   while running:
     try:
       poll()
     except ValueError as e:
-      debugEcho e.msg
+      # debugEcho e.msg
+      # Add a 'dummy' timer if no other handles are present to prevent more
+      # ValueError exceptions this is a workaround for a asyncdyspatch bug
+      # see - https://github.com/nim-lang/Nim/issues/14564
+      addTimer(1, false, proc (fd: AsyncFD): bool {.closure, gcsafe.} = false)
 
-proc RaftTimerJoinPollThread*() =
+proc RaftTimerJoinPollThread*() {.nimcall, gcsafe.} =
   joinThread(pollThr)
 
-proc RaftTimerStartCustomImpl*(joinThread: bool = true) =
+proc RaftTimerStartCustomImpl*(joinThread: bool = true) {.nimcall, gcsafe.} =
   withLock(runningMtx):
     running = true
   createThread(pollThr, RaftTimerPollThread)
   if joinThread:
     RaftTimerJoinPollThread()
 
-proc RaftTimerStopCustomImpl*(joinThread: bool = true) =
+proc RaftTimerStopCustomImpl*(joinThread: bool = true) {.nimcall, gcsafe.} =
   withLock(runningMtx):
     running = false
   if joinThread:

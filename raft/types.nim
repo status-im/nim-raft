@@ -12,6 +12,7 @@
 import std/locks
 import options
 import stew/results
+# import uuids/
 
 export results, options
 
@@ -23,9 +24,10 @@ type
     rnsCandidate = 2
     rnsLeader = 3
 
-  RaftNodeId* = uint64                        # uuid4 uniquely identifying every Raft Node
-  RaftNodeTerm* = uint64                      # Raft Node Term Type
-  RaftLogIndex* = uint64                      # Raft Node Log Index Type
+  UUID = object
+  RaftNodeId* = UUID                        # uuid4 uniquely identifying every Raft Node
+  RaftNodeTerm* = uint64                    # Raft Node Term Type
+  RaftLogIndex* = uint64                    # Raft Node Log Index Type
 
   RaftNodePeer* = object                    # Raft Node Peer object
     id*: RaftNodeId
@@ -63,7 +65,7 @@ type
     raftNodeAccessCallback: RaftNodeAccessCallback[SmCommandType, SmStateType]
 
   # Callback for sending messages out of this Raft Node
-  RaftMessageId* = uint64                  # UUID assigned to every Raft Node Message,
+  RaftMessageId* = UUID                    # UUID assigned to every Raft Node Message,
                                            # so it can be matched with it's corresponding response etc.
 
   RaftMessageBase* = ref object of RootObj # Base Type for Raft Protocol Messages
@@ -97,14 +99,14 @@ type
     logData*: seq[RaftNodeLogEntry[SmCommandType]]  # Raft Node Log Data
 
   # Timer types
-  RaftTimer* = object
+  RaftTimer* = ref object
     mtx*: Lock
     canceled*: bool
     expired*: bool
     timeout*: int
-    repeat*: bool
+    oneshot*: bool
 
-  RaftTimerCallback* = proc (timer: var RaftTimer) {.nimcall, gcsafe.}   # Pass any function wrapped in a closure
+  RaftTimerCallback* = proc (timer: RaftTimer) {.nimcall, gcsafe.}   # Pass any function wrapped in a closure
 
   # Raft Node Object type
   RaftNode*[SmCommandType, SmStateType] = object
