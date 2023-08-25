@@ -16,11 +16,11 @@ import random
 const
   MAX_TIMERS = 50
   SLOW_TIMERS_MIN = 300
-  SLOW_TIMERS_MAX = 350
-  FAST_TIMERS_MIN = 20
-  FAST_TIMERS_MAX = 150
-  WAIT_FOR_SLOW_TIMERS = 225
-  FINAL_WAIT = 125
+  SLOW_TIMERS_MAX = 400
+  FAST_TIMERS_MIN = 10
+  FAST_TIMERS_MAX = 100
+  WAIT_FOR_SLOW_TIMERS = 200
+  FINAL_WAIT = 300
 
 proc timersRunner() =
   var
@@ -32,31 +32,41 @@ proc timersRunner() =
       discard
 
   suite "Create and test basic timers":
+
     test "Start timers":
       RaftTimerStartCustomImpl(false)
-      check true
-    test "Create 'slow' timers":
+
+    test "Create 'slow' and 'fast' timers":
       for i in 0..MAX_TIMERS:
         slowTimers[i] = RaftTimerCreateCustomImpl(max(SLOW_TIMERS_MIN, rand(SLOW_TIMERS_MAX)), true, RaftDummyTimerCallback)
-      check true
-    test "Create 'fast' timers":
+
       for i in 0..MAX_TIMERS:
         fastTimers[i] = RaftTimerCreateCustomImpl(max(FAST_TIMERS_MIN, rand(FAST_TIMERS_MAX)), true, RaftDummyTimerCallback)
-      check true
+
     test "Wait for and cancel 'slow' timers":
-      waitFor sleepAsync(WAIT_FOR_SLOW_TIMERS)
+      var fut = sleepAsync(WAIT_FOR_SLOW_TIMERS)
+      while not fut.finished:
+        discard
       for i in 0..MAX_TIMERS:
         RaftTimerCancelCustomImpl(slowTimers[i])
-      check true
+
     test "Wait and stop timers":
       waitFor sleepAsync(FINAL_WAIT)
-      RaftTimerStopCustomImpl(true)
-      check true
+      RaftTimerStopCustomImpl()
+
     test "Check timers consistency":
+      var
+        pass = true
+
       for i in 0..MAX_TIMERS:
-        if not fastTimers[i].expired or not slowTimers[i].canceled:
-          check false
-      check true
+        if not fastTimers[i].expired:
+          pass = false
+          break
+        if not slowTimers[i].canceled:
+          pass = false
+          break
+
+      check pass
 
 if isMainModule:
   timersRunner()

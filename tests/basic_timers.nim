@@ -10,6 +10,7 @@
 import std/asyncdispatch
 import std/locks
 import ../raft/types
+import uuids
 
 export asyncdispatch
 
@@ -48,13 +49,15 @@ proc RaftTimerCancelCustomImpl*(timer: RaftTimer): bool {.nimcall, gcsafe, disca
 proc RaftTimerPollThread() {.thread, nimcall, gcsafe.} =
   while running:
     try:
+
       poll()
+      debugEcho activeDescriptors()
     except ValueError as e:
-      # debugEcho e.msg
+      debugEcho e.msg
       # Add a 'dummy' timer if no other handles are present to prevent more
       # ValueError exceptions this is a workaround for a asyncdyspatch bug
       # see - https://github.com/nim-lang/Nim/issues/14564
-      addTimer(1, false, proc (fd: AsyncFD): bool {.closure, gcsafe.} = false)
+      addTimer(10000, false, proc (fd: AsyncFD): bool {.closure, gcsafe.} = false)
 
 proc RaftTimerJoinPollThread*() {.nimcall, gcsafe.} =
   joinThread(pollThr)
