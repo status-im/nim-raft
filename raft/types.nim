@@ -12,7 +12,7 @@
 import std/locks
 import options
 import stew/results
-# import uuids/
+import uuids
 
 export results, options
 
