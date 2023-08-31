@@ -17,11 +17,24 @@ proc basicClusterMain*() =
 
   suite "Basic Raft Cluster Tests":
 
-    test "Test Basic Raft Cluster Init (5 nodes)":
+    test "Basic Raft Cluster Init (5 nodes)":
       for i in 0..4:
         nodesIds[i] = genUUID()
 
       cluster = BasicRaftClusterInit(nodesIds)
+      check cluster.nodes.len == 5
+
+    test "Generate Random Client SmCommands Queue":
+      discard
+
+    test "Start Basic Raft Cluster And wait it to converge (Elect a Leader)":
+      discard
+
+    test "Simulate Basic Raft Cluster Client SmCommands Execution / Log Replication":
+      discard
+
+    test "Evaluate results":
+      discard
 
 if isMainModule:
   basicClusterMain()
