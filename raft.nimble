@@ -25,10 +25,10 @@ proc buildBinary(name: string, srcDir = "./", params = "", lang = "c") =
   if not dirExists "build":
     mkDir "build"
   # allow something like "nim nimbus --verbosity:0 --hints:off nimbus.nims"
-#   var extra_params = params
-#   for i in 2..<paramCount():
-#     extra_params &= " " & paramStr(i)
-  exec "nim " & lang & " --threads:on --out:build/" & name & " " & srcDir & name & ".nim"
+  var extra_params = params
+  for i in 2..<paramCount():
+    extra_params &= " " & paramStr(i)
+  exec "nim " & lang & " --threads:on " & extra_params & " --out:build/" & name & " " & srcDir & name & ".nim"
 
 proc test(path: string, name: string, params = "", lang = "c") =
   # Verify stack usage is kept low by setting 750k stack limit in tests.
