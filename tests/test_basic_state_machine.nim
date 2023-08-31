@@ -23,7 +23,7 @@ proc basicStateMachineMain*() =
 
       check sm != nil and sm.state != nil and sm.state.len == 0
 
-    test "Init commands":
+    test "Init commands Log":
       smCommandsLog.add(SmCommand(cmd: scSet, key: "a", val: "a"))
       smCommandsLog.add(SmCommand(cmd: scSet, key: "b", val: "b"))
       smCommandsLog.add(SmCommand(cmd: scSet, key: "c", val: "c"))
@@ -40,7 +40,7 @@ proc basicStateMachineMain*() =
 
       check smCommandsLog.len == 13
 
-    test "Apply commands and check result":
+    test "Apply commands from the Log and check result":
       for c in smCommandsLog:
         RaftSmApply(sm, c)
 
