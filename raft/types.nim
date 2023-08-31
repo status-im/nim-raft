@@ -42,10 +42,10 @@ type
 
 
   # Raft Node Abstract State Machine type
-  RaftNodeStateMachine*[SmCommandType, SmStateType] = object      # Some opaque State Machine Impelementation to be used by the Raft Node
+  RaftNodeStateMachine*[SmCommandType, SmStateType] = ref object      # Some opaque State Machine Impelementation to be used by the Raft Node
                                                                   # providing at minimum operations for initialization, querying the current state
                                                                   # and RaftNodeLogEntry (SmCommandType) application
-    state: SmStateType
+    state*: ref SmStateType
 
   # Raft Node Persistent Storage basic definition
   RaftNodePersistentStorage*[SmCommandType, SmStateType] = object     # Should be some kind of Persistent Transactional Store Wrapper
