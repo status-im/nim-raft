@@ -90,9 +90,9 @@ type
     term*: RaftNodeTerm
     index*: RaftLogIndex
     entryType*: LogEntryType                        # Type of entry - data to append, configuration or no op etc.
-    configuration: Option[RaftNodeConfiguration]    # Node configuration
     data*: Option[SmCommandType]                    # Entry data (State Machine Command) - this is mutually exclusive with configuration
                                                     # depending on entryType field
+    configuration*: Option[RaftNodeConfiguration]    # Node configuration
 
   RaftNodeLog*[SmCommandType] = object              # Needs more elaborate definition.
                                                     # Probably this will be a RocksDB/MDBX/SQLite Store Wrapper etc.
@@ -109,7 +109,7 @@ type
   RaftTimerCallback* = proc (timer: RaftTimer) {.nimcall, gcsafe.}   # Pass any function wrapped in a closure
 
   # Raft Node Object type
-  RaftNode*[SmCommandType, SmStateType] = object
+  RaftNode*[SmCommandType, SmStateType] = ref object
     # Timers
     requestVotesTimeout: int
     heartBeatTimeout: int

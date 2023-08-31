@@ -22,7 +22,7 @@ const
   WAIT_FOR_SLOW_TIMERS = 200
   FINAL_WAIT = 300
 
-proc timersRunner() =
+proc basicTimersMain*() =
   var
     slowTimers: array[0..MAX_TIMERS, RaftTimer]
     fastTimers: array[0..MAX_TIMERS, RaftTimer]
@@ -33,9 +33,6 @@ proc timersRunner() =
 
   suite "Create and test basic timers":
 
-    test "Start timers":
-      RaftTimerStartCustomImpl(false)
-
     test "Create 'slow' and 'fast' timers":
       for i in 0..MAX_TIMERS:
         slowTimers[i] = RaftTimerCreateCustomImpl(max(SLOW_TIMERS_MIN, rand(SLOW_TIMERS_MAX)), true, RaftDummyTimerCallback)
@@ -44,15 +41,12 @@ proc timersRunner() =
         fastTimers[i] = RaftTimerCreateCustomImpl(max(FAST_TIMERS_MIN, rand(FAST_TIMERS_MAX)), true, RaftDummyTimerCallback)
 
     test "Wait for and cancel 'slow' timers":
-      var fut = sleepAsync(WAIT_FOR_SLOW_TIMERS)
-      while not fut.finished:
-        discard
+      waitFor sleepAsync(WAIT_FOR_SLOW_TIMERS)
       for i in 0..MAX_TIMERS:
         RaftTimerCancelCustomImpl(slowTimers[i])
 
-    test "Wait and stop timers":
+    test "Final wait timers":
       waitFor sleepAsync(FINAL_WAIT)
-      RaftTimerStopCustomImpl()
 
     test "Check timers consistency":
       var
@@ -69,4 +63,4 @@ proc timersRunner() =
       check pass
 
 if isMainModule:
-  timersRunner()
+  basicTimersMain()

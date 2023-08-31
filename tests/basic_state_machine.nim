@@ -9,7 +9,6 @@
 
 import ../raft/types
 import std/tables
-
 export tables
 
 type

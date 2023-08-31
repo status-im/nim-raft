@@ -11,12 +11,12 @@ import unittest2
 import ../raft/types
 import basic_state_machine
 
-proc smRunner() =
+proc basicStateMachineMain*() =
   var
     sm: RaftBasicSm
     smCommandsLog: seq[SmCommand]
 
-  suite "Test Basic State Machine Implementation":
+  suite "Test Basic State Machine Implementation ":
 
     test "Test Init":
       RaftSmInit(sm)
@@ -47,4 +47,4 @@ proc smRunner() =
       check sm.state[] == {"b": "b", "c": "c", "e": "e", "f": "f", "g": "g", "h": "h"}.toTable
 
 if isMainModule:
-  smRunner()
+  basicStateMachineMain()
