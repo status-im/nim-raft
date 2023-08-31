@@ -28,7 +28,7 @@ proc basicClusterMain*() =
       discard
 
     test "Start Basic Raft Cluster And wait it to converge (Elect a Leader)":
-      discard
+      BasicRaftClusterStart(cluster)
 
     test "Simulate Basic Raft Cluster Client SmCommands Execution / Log Replication":
       discard

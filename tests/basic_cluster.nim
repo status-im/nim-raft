@@ -9,7 +9,6 @@
 
 import basic_timers
 import basic_state_machine
-import ../raft/raft_api
 
 export raft_api
 
@@ -25,11 +24,21 @@ proc BasicRaftClusterRaftMessageSendCallbackCreate(cluster: BasicRaftCluster): R
       nodeIdx: int = -1
 
     for i in 0..cluster.nodes.len:
-      if cluster.nodes[i].id == msg.receiverId:
+      if RaftNodeIdGet(cluster.nodes[i]) == msg.receiverId:
         nodeIdx = i
         break
 
     cluster.nodes[nodeIdx].RaftNodeMessageDeliver(msg)
+
+proc BasicRaftClusterStart*(cluster: BasicRaftCluster) =
+  for node in cluster.nodes:
+    RaftNodeStart(node)
+
+proc BasicRaftClusterGetLeader*(cluster: BasicRaftCluster): UUID =
+  result = DefaultUUID
+  for node in cluster.nodes:
+    if RaftNodeIsLeader(node):
+      return RaftNodeIdGet(node)
 
 proc BasicRaftClusterClientRequest*(cluster: BasicRaftCluster, req: RaftNodeClientRequest): RaftNodeClientResponse =
   discard
@@ -41,5 +50,5 @@ proc BasicRaftClusterInit*(nodesIds: seq[RaftNodeId]): BasicRaftCluster =
       peersIds = nodesIds
 
     peersIds.del(peersIds.find(nodeId))
-    result.nodes.add(RaftNodeCreateNew[SmCommand, SmState](nodeId, peersIds, BasicRaftClusterRaftMessageSendCallbackCreate(result)))
+    result.nodes.add(BasicRaftNode.new(nodeId, peersIds, BasicRaftClusterRaftMessageSendCallbackCreate(result)))
 

@@ -16,23 +16,23 @@ export types, protocol, consensus_module
 proc RaftNodeSmInit[SmCommandType, SmStateType](stateMachine: var RaftNodeStateMachine[SmCommandType, SmStateType])
 
 # Raft Node Public API procedures / functions
-proc RaftNodeCreateNew*[SmCommandType, SmStateType](                      # Create New Raft Node
-                  id: RaftNodeId, peersIds: seq[RaftNodeId],
+proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateType];   # Create New Raft Node
+                  id: RaftNodeId; peersIds: seq[RaftNodeId];
                   # persistentStorage: RaftNodePersistentStorage,
-                  msgSendCallback: RaftMessageSendCallback): RaftNode[SmCommandType, SmStateType] =
+                  msgSendCallback: RaftMessageSendCallback): T =
   var
     sm: RaftNodeStateMachine[SmCommandType, SmStateType]
     peers: RaftNodePeers
 
-  RaftNodeSmInit[SmCommandType, SmStateType](sm)
-
   for peerId in peersIds:
     peers.add(RaftNodePeer(id: peerId, nextIndex: 0, matchIndex: 0, hasVoted: false, canVote: true))
 
-  result = RaftNode[SmCommandType, SmStateType](
+  result = T(
     id: id, state: rnsFollower, currentTerm: 0, peers: peers, commitIndex: 0, lastApplied: 0,
-    stateMachine: sm, msgSendCallback: msgSendCallback
+    stateMachine: sm, msgSendCallback: msgSendCallback, votedFor: DefaultUUID, currentLeaderId: DefaultUUID
   )
+
+  RaftNodeSmInit[SmCommandType, SmStateType](result.stateMachine)
   initLock(result.raftStateMutex)
 
 proc RaftNodeLoad*[SmCommandType, SmStateType](
@@ -44,13 +44,13 @@ proc RaftNodeStop*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmS
   discard
 
 proc RaftNodeStart*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  discard
+  debugEcho "StartNode: ", node.id
 
-func RaftNodeIdGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftNodeId =                   # Get Raft Node ID
-  node.id
+func RaftNodeIdGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftNodeId {.gcsafe.} =        # Get Raft Node ID
+  result = node.id
 
 func RaftNodeStateGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftNodeState =             # Get Raft Node State
-    node.state
+  node.state
 
 func RaftNodeTermGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftNodeTerm =               # Get Raft Node Term
   node.currentTerm

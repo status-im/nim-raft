@@ -17,6 +17,9 @@ import uuids
 export results, options, locks, uuids
 
 
+const
+  DefaultUUID* = initUUID(0, 0)             # 00000000-0000-0000-0000-000000000000
+
 type
   RaftNodeState* = enum
     rnsUnknown = 0,
@@ -141,15 +144,15 @@ type
     id*: RaftNodeId                          # This Raft Node ID
     state*: RaftNodeState                    # This Raft Node State
     currentTerm*: RaftNodeTerm               # Latest term this Raft Node has seen (initialized to 0 on first boot, increases monotonically)
-    votedFor*: RaftNodeId                    # Candidate RaftNodeId that received vote in current term (or nil/zero if none),
-                                            # also used to redirect Client Requests in case this Raft Node is not the leader
-    log: RaftNodeLog[SmCommandType]         # This Raft Node Log
+    votedFor*: RaftNodeId                    # Candidate RaftNodeId that received vote in current term (or DefaultUUID if none),
+                                             # also used to redirect Client Requests in case this Raft Node is not the leader
+    log: RaftNodeLog[SmCommandType]          # This Raft Node Log
     stateMachine*: RaftNodeStateMachine[SmCommandType, SmStateType]      # Not sure for now putting it here. I assume that persisting the State Machine's
                                                                         # state is enough to consider it 'persisted'
     peers*: RaftNodePeers                    # This Raft Node Peers IDs. I am not sure if this must be persistent or volatile but making it persistent
-                                            # makes sense for the moment
+                                             # makes sense for the moment
 
     # Volatile state
     commitIndex*: RaftLogIndex               # Index of highest log entry known to be committed (initialized to 0, increases monotonically)
     lastApplied*: RaftLogIndex               # Index of highest log entry applied to state machine (initialized to 0, increases monotonically)
-    currentLeaderId: RaftNodeId             # The ID of the cirrent leader Raft Node or 0/nil if None is leader (election is in progress etc.)
+    currentLeaderId*: RaftNodeId             # The ID of the current leader Raft Node or DefaultUUID if None is leader (election is in progress etc.)
