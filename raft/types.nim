@@ -14,7 +14,7 @@ import options
 import stew/results
 import uuids
 
-export results, options
+export results, options, locks, uuids
 
 
 type
@@ -24,7 +24,6 @@ type
     rnsCandidate = 2
     rnsLeader = 3
 
-  UUID = object
   RaftNodeId* = UUID                        # uuid4 uniquely identifying every Raft Node
   RaftNodeTerm* = uint64                    # Raft Node Term Type
   RaftLogIndex* = uint64                    # Raft Node Log Index Type
@@ -71,10 +70,17 @@ type
   RaftMessageBase* = ref object of RootObj # Base Type for Raft Protocol Messages
     msgId*: RaftMessageId                  # Message UUID
     senderId*: RaftNodeId                  # Sender Raft Node ID
+    receiverId*: RaftNodeId                 # Receiver Raft Node ID
     senderTerm*: RaftNodeTerm              # Sender Raft Node Term
 
-  RaftMessageSendCallback* = proc (recipient: RaftNodeId, raftMessage: RaftMessageBase) {.nimcall, gcsafe.}  # Callback for Sending Raft Node Messages
-                                                                                      # out of this Raft Node.
+  RaftMessageResponseBase* = ref object of RootObj
+    msgId*: RaftMessageId                  # Original Message ID
+    senderId*: RaftNodeId                  # Sender Raft Node ID
+    respondentId: RaftNodeId               # Responding RaftNodeId
+    senderTerm*: RaftNodeTerm              # Sender Raft Node Term
+
+  RaftMessageSendCallback* = proc (raftMessage: RaftMessageBase): RaftMessageResponseBase {.gcsafe.}  # Callback for Sending Raft Node Messages
+                                                                                                      # out of this Raft Node.
 
   # For later use when adding/removing new nodes (dynamic configuration chganges)
   RaftNodeConfiguration* = object
@@ -120,7 +126,7 @@ type
     appendEntriesTimer: RaftTimer
 
     # Mtx definition(s) go here
-    raftStateMutex: Lock
+    raftStateMutex*: Lock
 
     # Modules (Algos)
     consensusModule: RaftConsensusModule[SmCommandType, SmStateType]
@@ -128,22 +134,22 @@ type
     membershipChangeModule: RaftMembershipChangeModule[SmCommandType, SmStateType]
 
     # Misc
-    msgSendCallback: RaftMessageSendCallback
+    msgSendCallback*: RaftMessageSendCallback
     persistentStorage: RaftNodePersistentStorage[SmCommandType, SmStateType]
 
     # Persistent state
-    id: RaftNodeId                          # This Raft Node ID
-    state: RaftNodeState                    # This Raft Node State
-    currentTerm: RaftNodeTerm               # Latest term this Raft Node has seen (initialized to 0 on first boot, increases monotonically)
-    votedFor: RaftNodeId                    # Candidate RaftNodeId that received vote in current term (or nil/zero if none),
+    id*: RaftNodeId                          # This Raft Node ID
+    state*: RaftNodeState                    # This Raft Node State
+    currentTerm*: RaftNodeTerm               # Latest term this Raft Node has seen (initialized to 0 on first boot, increases monotonically)
+    votedFor*: RaftNodeId                    # Candidate RaftNodeId that received vote in current term (or nil/zero if none),
                                             # also used to redirect Client Requests in case this Raft Node is not the leader
     log: RaftNodeLog[SmCommandType]         # This Raft Node Log
-    stateMachine: RaftNodeStateMachine[SmCommandType, SmStateType]      # Not sure for now putting it here. I assume that persisting the State Machine's
+    stateMachine*: RaftNodeStateMachine[SmCommandType, SmStateType]      # Not sure for now putting it here. I assume that persisting the State Machine's
                                                                         # state is enough to consider it 'persisted'
-    peers: RaftNodePeers                    # This Raft Node Peers IDs. I am not sure if this must be persistent or volatile but making it persistent
+    peers*: RaftNodePeers                    # This Raft Node Peers IDs. I am not sure if this must be persistent or volatile but making it persistent
                                             # makes sense for the moment
 
     # Volatile state
-    commitIndex: RaftLogIndex               # Index of highest log entry known to be committed (initialized to 0, increases monotonically)
-    lastApplied: RaftLogIndex               # Index of highest log entry applied to state machine (initialized to 0, increases monotonically)
+    commitIndex*: RaftLogIndex               # Index of highest log entry known to be committed (initialized to 0, increases monotonically)
+    lastApplied*: RaftLogIndex               # Index of highest log entry applied to state machine (initialized to 0, increases monotonically)
     currentLeaderId: RaftNodeId             # The ID of the cirrent leader Raft Node or 0/nil if None is leader (election is in progress etc.)

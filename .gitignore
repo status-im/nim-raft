@@ -6,3 +6,4 @@
 *.out
 nimcache/
 build/
+nimbledeps/

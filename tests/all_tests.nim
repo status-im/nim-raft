@@ -7,10 +7,11 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
-import test_macro
+import ../misc/test_macro
 
-{. warning[UnusedImport]: off .}
+{. warning[UnusedImport]:off .}
 
 cliBuilder:
-  import  ./test_basic_state_machine,
+  import  ./test_basic_cluster,
+          ./test_basic_state_machine,
           ./test_basic_timers

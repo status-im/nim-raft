@@ -17,16 +17,23 @@ proc RaftNodeSmInit[SmCommandType, SmStateType](stateMachine: var RaftNodeStateM
 
 # Raft Node Public API procedures / functions
 proc RaftNodeCreateNew*[SmCommandType, SmStateType](                      # Create New Raft Node
-                  id: RaftNodeId, peers: RaftNodePeers,
-                  persistentStorage: RaftNodePersistentStorage,
+                  id: RaftNodeId, peersIds: seq[RaftNodeId],
+                  # persistentStorage: RaftNodePersistentStorage,
                   msgSendCallback: RaftMessageSendCallback): RaftNode[SmCommandType, SmStateType] =
   var
-    sm = RaftNodeStateMachine[SmCommandType, SmStateType]
+    sm: RaftNodeStateMachine[SmCommandType, SmStateType]
+    peers: RaftNodePeers
+
   RaftNodeSmInit[SmCommandType, SmStateType](sm)
+
+  for peerId in peersIds:
+    peers.add(RaftNodePeer(id: peerId, nextIndex: 0, matchIndex: 0, hasVoted: false, canVote: true))
+
   result = RaftNode[SmCommandType, SmStateType](
-    id: id, state: rnsFollower, currentTerm: 0, votedFor: nil, peers: peers, commitIndex: 0, lastApplied: 0,
+    id: id, state: rnsFollower, currentTerm: 0, peers: peers, commitIndex: 0, lastApplied: 0,
     stateMachine: sm, msgSendCallback: msgSendCallback
   )
+  initLock(result.raftStateMutex)
 
 proc RaftNodeLoad*[SmCommandType, SmStateType](
                   persistentStorage: RaftNodePersistentStorage,            # Load Raft Node From Storage

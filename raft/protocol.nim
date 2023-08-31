@@ -23,12 +23,6 @@ type
     rmreSuccess = 0,
     rmreFail = 1
 
-  RaftMessageResponseBase* = ref object of RootObj
-    msgId*: RaftMessageId                  # Original Message ID
-    senderId*: RaftNodeId                  # Sender Raft Node ID
-    respondentId: RaftNodeId               # Responding RaftNodeId
-    senderTerm*: RaftNodeTerm              # Sender Raft Node Term
-
   RaftMessageRequestVote* = ref object of RaftMessageBase
     lastLogTerm*: RaftNodeTerm
     lastLogIndex*: RaftLogIndex
@@ -59,6 +53,7 @@ type
 
   RaftNodeClientRequest*[SmCommandType] = ref object
     op*: RaftNodeClientRequestOps
+    nodeId*: RaftNodeId
     payload*: Option[SmCommandType]  # Optional RaftMessagePayload carrying a Log Entry
 
   RaftNodeClientResponse*[SmStateType] = ref object
