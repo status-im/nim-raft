@@ -11,6 +11,8 @@ import basic_timers
 import basic_state_machine
 import ../raft/raft_api
 
+export raft_api
+
 type
   BasicRaftNode* = RaftNode[SmCommand, SmState]
 

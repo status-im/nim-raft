@@ -8,8 +8,6 @@
 # those terms.
 
 import unittest2
-import ../raft/types
-import std/locks
 import basic_timers
 import random
 

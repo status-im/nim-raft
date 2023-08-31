@@ -9,7 +9,6 @@
 
 import unittest2
 import basic_cluster
-import ../raft/types
 
 proc basicClusterMain*() =
   var

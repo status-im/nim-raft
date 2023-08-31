@@ -8,19 +8,14 @@
 # those terms.
 
 import std/asyncdispatch
-import std/locks
-import ../raft/types
-import uuids
+import ../raft/raft_api
 
-export asyncdispatch
+export asyncdispatch, raft_api
 
 var
   pollThr: Thread[void]
   runningMtx: Lock
   running: bool
-
-  timersChan: seq[RaftTimer]
-  timersChanMtx: Lock
 
 proc RaftTimerCreateCustomImpl*(timerInterval: int, oneshot: bool, timerCallback: RaftTimerCallback): RaftTimer {.nimcall, gcsafe.} =
   var

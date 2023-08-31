@@ -7,9 +7,10 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
-import ../raft/types
 import std/tables
-export tables
+import ../raft/raft_api
+
+export tables, raft_api
 
 type
   SmState* = Table[string, string]
