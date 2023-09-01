@@ -13,6 +13,7 @@ import std/locks
 import options
 import stew/results
 import uuids
+import asyncdispatch
 
 export results, options, locks, uuids
 
@@ -73,17 +74,12 @@ type
   RaftMessageBase* = ref object of RootObj # Base Type for Raft Protocol Messages
     msgId*: RaftMessageId                  # Message UUID
     senderId*: RaftNodeId                  # Sender Raft Node ID
-    receiverId*: RaftNodeId                 # Receiver Raft Node ID
-    senderTerm*: RaftNodeTerm              # Sender Raft Node Term
+    receiverId*: RaftNodeId                # Receiver Raft Node ID
 
-  RaftMessageResponseBase* = ref object of RootObj
-    msgId*: RaftMessageId                  # Original Message ID
-    senderId*: RaftNodeId                  # Sender Raft Node ID
-    respondentId: RaftNodeId               # Responding RaftNodeId
-    senderTerm*: RaftNodeTerm              # Sender Raft Node Term
+  RaftMessageResponseBase* = ref object of RaftMessageBase
 
-  RaftMessageSendCallback* = proc (raftMessage: RaftMessageBase): RaftMessageResponseBase {.gcsafe.}  # Callback for Sending Raft Node Messages
-                                                                                                      # out of this Raft Node.
+  RaftMessageSendCallback* = proc (raftMessage: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.}  # Callback for Sending Raft Node Messages
+                                                                                                                     # out of this Raft Node.
 
   # For later use when adding/removing new nodes (dynamic configuration chganges)
   RaftNodeConfiguration* = object
@@ -115,7 +111,7 @@ type
     timeout*: int
     oneshot*: bool
 
-  RaftTimerCallback* = proc (timer: RaftTimer) {.nimcall, gcsafe.}   # Pass any function wrapped in a closure
+  RaftTimerCallback* = proc (timer: RaftTimer) {.gcsafe.}   # Pass any function wrapped in a closure
 
   # Raft Node Object type
   RaftNode*[SmCommandType, SmStateType] = ref object

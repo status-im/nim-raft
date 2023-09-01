@@ -10,11 +10,14 @@
 import protocol
 import types
 
-proc RaftConsensusProcessRequestVote*(consensus: RaftConsensusModule, msg: RaftMessageRequestVote): RaftMessageRequestVoteResponse =
+proc RaftNodeConsensusStartElection*(consensus: RaftConsensusModule) =
   discard
 
-proc RaftConsensusProcessAppendEntries*(consensus: RaftConsensusModule, msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse =
+proc RaftNodeConsensusProcessRequestVote*(consensus: RaftConsensusModule, msg: RaftMessageRequestVote): RaftMessageRequestVoteResponse =
   discard
 
-proc RaftConsensusQuorumMin(consensus: RaftConsensusModule): bool =
+proc RaftNodeConsensusProcessAppendEntries*(consensus: RaftConsensusModule, msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse =
+  discard
+
+proc RaftNodeConsensusQuorumMin(consensus: RaftConsensusModule): bool =
   discard

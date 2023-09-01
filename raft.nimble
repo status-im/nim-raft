@@ -20,6 +20,7 @@ requires "nim >= 1.6.14"
 requires "stew >= 0.1.0"
 requires "unittest2 >= 0.0.4"
 requires "uuids >= 0.1.11"
+requires "chronicles >= 0.10.3"
 
 proc buildBinary(name: string, srcDir = "./", params = "", lang = "c") =
   if not dirExists "build":
@@ -47,7 +48,7 @@ proc test(path: string, name: string, params = "", lang = "c") =
   exec runPrefix & "build/" & name
 
 task test, "Run tests":
-  test "tests", "all_tests", "-d:chronicles_log_level=ERROR -d:unittest2DisableParamFiltering"
+  test "tests", "all_tests", "-d:chronicles_sinks=textlines -d:chronicles_log_level=ERROR -d:unittest2DisableParamFiltering"
 
 
 # Helper functions

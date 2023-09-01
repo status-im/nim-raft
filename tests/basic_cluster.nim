@@ -19,7 +19,7 @@ type
     nodes*: seq[BasicRaftNode]
 
 proc BasicRaftClusterRaftMessageSendCallbackCreate(cluster: BasicRaftCluster): RaftMessageSendCallback =
-  proc (msg: RaftMessageBase): RaftMessageResponseBase {.closure.} =
+  proc (msg: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.} =
     var
       nodeIdx: int = -1
 
@@ -28,7 +28,7 @@ proc BasicRaftClusterRaftMessageSendCallbackCreate(cluster: BasicRaftCluster): R
         nodeIdx = i
         break
 
-    cluster.nodes[nodeIdx].RaftNodeMessageDeliver(msg)
+    result = await cluster.nodes[nodeIdx].RaftNodeMessageDeliver(msg)
 
 proc BasicRaftClusterStart*(cluster: BasicRaftCluster) =
   for node in cluster.nodes:

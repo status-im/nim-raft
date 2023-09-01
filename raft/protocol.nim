@@ -26,6 +26,7 @@ type
   RaftMessageRequestVote* = ref object of RaftMessageBase
     lastLogTerm*: RaftNodeTerm
     lastLogIndex*: RaftLogIndex
+    senderTerm*: RaftNodeTerm               # Sender Raft Node Term
 
   RaftMessageRequestVoteResponse* = ref object of RaftMessageResponseBase
     granted*: bool
@@ -35,6 +36,7 @@ type
     prevLogTerm*: RaftNodeTerm
     commitIndex*: RaftLogIndex
     logEntries*: Option[seq[RaftNodeLogEntry[SmCommandType]]]         # Optional log entry(ies). Will be empty for a Heart-Beat
+    senderTerm*: RaftNodeTerm                                         # Sender Raft Node Term
 
   RaftMessageAppendEntriesResponse*[SmStateType] = ref object of RaftMessageResponseBase
     success*: bool
