@@ -10,14 +10,30 @@
 import protocol
 import types
 
-proc RaftNodeConsensusStartElection*(consensus: RaftConsensusModule) =
+proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   discard
 
-proc RaftNodeConsensusProcessRequestVote*(consensus: RaftConsensusModule, msg: RaftMessageRequestVote): RaftMessageRequestVoteResponse =
+proc RaftNodeProcessRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageRequestVote): RaftMessageRequestVoteResponse =
   discard
 
-proc RaftNodeConsensusProcessAppendEntries*(consensus: RaftConsensusModule, msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse =
+proc RaftNodeProcessAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse =
   discard
 
-proc RaftNodeConsensusQuorumMin(consensus: RaftConsensusModule): bool =
+proc RaftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): bool =
+  discard
+
+proc RaftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], cmd: SmCommandType) =
+  discard
+
+# Private Timers Create Ops
+proc RaftNodeScheduleHeartBeat[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+  discard
+
+proc RaftNodeScheduleHeartBeatTimeout[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+  discard
+
+proc RaftNodeScheduleElectionTimeOut[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+  discard
+
+proc RaftNodeScheduleRequestVoteTimeout[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   discard

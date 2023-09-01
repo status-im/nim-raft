@@ -7,11 +7,12 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
+import chronicles
+import asyncdispatch
+
 import types
 import protocol
 import consensus_module
-import chronicles
-import asyncdispatch
 
 export types, protocol, consensus_module
 
@@ -111,17 +112,4 @@ proc RaftNodeLogIndexGet[SmCommandType, SmStateType](node: RaftNode[SmCommandTyp
   discard
 
 proc RaftNodeLogEntryGet[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], logIndex: RaftLogIndex): Result[RaftNodeLogEntry[SmCommandType], string] =
-  discard
-
-# Private Timers Create Ops
-proc RaftNodeScheduleHeartBeat[SmCommandType, SmStateType, TimerDurationType](node: RaftNode[SmCommandType, SmStateType]) =
-  discard
-
-proc RaftNodeScheduleHeartBeatTimeout[SmCommandType, SmStateType, TimerDurationType](node: RaftNode[SmCommandType, SmStateType]) =
-  discard
-
-proc RaftNodeScheduleElectionTimeOut[SmCommandType, SmStateType, TimerDurationType](node: RaftNode[SmCommandType, SmStateType]) =
-  discard
-
-proc RaftNodeScheduleRequestVoteTimeout[SmCommandType, SmStateType, TimerDurationType](node: RaftNode[SmCommandType, SmStateType]) =
   discard

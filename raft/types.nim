@@ -127,11 +127,6 @@ type
     # Mtx definition(s) go here
     raftStateMutex*: Lock
 
-    # Modules (Algos)
-    consensusModule: RaftConsensusModule[SmCommandType, SmStateType]
-    logCompactionModule: RaftLogCompactionModule[SmCommandType, SmStateType]
-    membershipChangeModule: RaftMembershipChangeModule[SmCommandType, SmStateType]
-
     # Misc
     msgSendCallback*: RaftMessageSendCallback
     persistentStorage: RaftNodePersistentStorage[SmCommandType, SmStateType]
