@@ -7,8 +7,7 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
-import protocol
-import types
+import types, protocol
 
 proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   discard
@@ -25,15 +24,8 @@ proc RaftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType,
 proc RaftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], cmd: SmCommandType) =
   discard
 
-# Private Timers Create Ops
-proc RaftNodeScheduleHeartBeat[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+proc RaftNodeScheduleElectionTimeOut*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   discard
 
-proc RaftNodeScheduleHeartBeatTimeout[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  discard
-
-proc RaftNodeScheduleElectionTimeOut[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  discard
-
-proc RaftNodeScheduleRequestVoteTimeout[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+proc RaftNodeScheduleRequestVotesCleanUpTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   discard
