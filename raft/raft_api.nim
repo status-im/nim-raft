@@ -8,7 +8,6 @@
 # those terms.
 
 import chronicles
-import asyncdispatch
 
 import types
 import protocol
@@ -24,7 +23,6 @@ proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateTyp
                   # persistentStorage: RaftNodePersistentStorage,
                   msgSendCallback: RaftMessageSendCallback): T =
   var
-    sm: RaftNodeStateMachine[SmCommandType, SmStateType]
     peers: RaftNodePeers
 
   for peerId in peersIds:
@@ -32,10 +30,10 @@ proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateTyp
 
   result = T(
     id: id, state: rnsFollower, currentTerm: 0, peers: peers, commitIndex: 0, lastApplied: 0,
-    stateMachine: sm, msgSendCallback: msgSendCallback, votedFor: DefaultUUID, currentLeaderId: DefaultUUID
+    msgSendCallback: msgSendCallback, votedFor: DefaultUUID, currentLeaderId: DefaultUUID
   )
 
-  RaftNodeSmInit[SmCommandType, SmStateType](result.stateMachine)
+  RaftNodeSmInit(result.stateMachine)
   initLock(result.raftStateMutex)
 
 proc RaftNodeLoad*[SmCommandType, SmStateType](
@@ -47,6 +45,9 @@ proc RaftNodeStop*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmS
   discard
 
 proc RaftNodeStart*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+  if node.state != rnsFollower:
+    raiseAssert "Something's wrong - Follower state expected at start!"
+
   debugEcho "StartNode: ", node.id
 
 func RaftNodeIdGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftNodeId {.gcsafe.} =        # Get Raft Node ID
@@ -66,11 +67,21 @@ func RaftNodeIsLeader*[SmCommandType, SmStateType](node: RaftNode[SmCommandType,
 
 # Deliver Raft Message to the Raft Node and dispatch it
 proc RaftNodeMessageDeliver*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], raftMessage: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.} =
-  discard
+  case raftMessage.type:
+    of RaftMessageAppendEntries:  # Dispatch different Raft Message types
+      discard
+    of RaftMessageRequestVote:
+      discard
 
 # Process RaftNodeClientRequests
 proc RaftNodeClientRequest*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], req: RaftNodeClientRequest[SmCommandType]): Future[RaftNodeClientResponse[SmStateType]] {.async, gcsafe.} =
-  discard
+  case req.op:
+    of rncroExecSmCommand:
+      # TODO: implemenmt command handling
+      discard
+    of rncroRequestSmState:
+      if RaftNodeIsLeader(node):
+        return RaftNodeClientResponse(error: rncreSuccess, state: RaftNodeStateGet(node))
 
 # Abstract State Machine Ops
 func RaftNodeSmStateGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): SmStateType =
@@ -88,18 +99,6 @@ proc RaftNodeSmApply[SmCommandType, SmStateType](stateMachine: RaftNodeStateMach
 template RaftTimerCreate(timerInterval: int, oneshot: bool, timerCallback: RaftTimerCallback): RaftTimer =
   mixin RaftTimerCreateCustomImpl
   RaftTimerCreateCustomImpl(timerInterval, oneshot, timerCallback)
-
-template RaftTimerCancel(timer: RaftTimer) =
-  mixin RaftTimerCancelCustomImpl
-  RaftTimerCancelCustomImpl(timer)
-
-template RaftTimerStart() =
-  mixin RaftTimerStartCustomImpl
-  RaftTimerStartCustomImpl()
-
-template RaftTimerStop() =
-  mixin RaftTimerStopCustomImpl
-  RaftTimerStopCustomImpl()
 
 # Private Log Ops
 proc RaftNodeLogAppend[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], logEntry: RaftNodeLogEntry[SmCommandType]) =

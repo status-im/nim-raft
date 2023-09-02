@@ -8,7 +8,6 @@
 # those terms.
 
 import unittest2
-import ../raft/types
 import basic_state_machine
 
 proc basicStateMachineMain*() =

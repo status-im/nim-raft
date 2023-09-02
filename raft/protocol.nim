@@ -48,7 +48,7 @@ type
     rncroRequestSmState = 0,
     rncroExecSmCommand = 1
 
-  RaftNodeClientResponseError = enum
+  RaftNodeClientResponseError* = enum
     rncreSuccess = 0,
     rncreFail = 1,
     rncreNotLeader = 2

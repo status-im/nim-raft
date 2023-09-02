@@ -15,8 +15,7 @@ import stew/results
 import uuids
 import asyncdispatch
 
-export results, options, locks, uuids
-
+export results, options, locks, uuids, asyncdispatch
 
 const
   DefaultUUID* = initUUID(0, 0)             # 00000000-0000-0000-0000-000000000000
@@ -111,7 +110,7 @@ type
     timeout*: int
     oneshot*: bool
 
-  RaftTimerCallback* = proc (timer: RaftTimer) {.gcsafe.}   # Pass any function wrapped in a closure
+  RaftTimerCallback* = proc () {.gcsafe.}   # Pass any function wrapped in a closure
 
   # Raft Node Object type
   RaftNode*[SmCommandType, SmStateType] = ref object
@@ -120,9 +119,9 @@ type
     heartBeatTimeout: int
     appendEntriesTimeout: int
 
-    requestVotesTimer: RaftTimer
-    heartBeatTimer: RaftTimer
-    appendEntriesTimer: RaftTimer
+    requestVotesTimer: Future[void]
+    heartBeatTimer: Future[void]
+    appendEntriesTimer: Future[void]
 
     # Mtx definition(s) go here
     raftStateMutex*: Lock
