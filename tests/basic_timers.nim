@@ -11,12 +11,6 @@ import ../raft/raft_api
 
 export raft_api
 
-var
-  pollThr: Thread[void]
-  runningMtx: Lock
-  running: bool
-
 proc RaftTimerCreateCustomImpl*(timerInterval: int, oneshot: bool, timerCallback: RaftTimerCallback): Future[void] {.async, nimcall, gcsafe.} =
-  var fut = sleepAsync(timerInterval)
-  fut.callback=proc()=timerCallback()
-  await fut
+  await sleepAsync(timerInterval)
+  timerCallback()

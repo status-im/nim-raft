@@ -22,18 +22,23 @@ const
 
 proc basicTimersMain*() =
   var
-    slowTimers: array[0..MAX_TIMERS, RaftTimer]
-    fastTimers: array[0..MAX_TIMERS, RaftTimer]
+    slowTimers: array[0..MAX_TIMERS, Future[void]]
+    fastTimers: array[0..MAX_TIMERS, Future[void]]
 
   var
-    RaftDummyTimerCallback = proc (timer: RaftTimer) {.nimcall, gcsafe.} =
-      discard
+    slowCnt: ref int
+    RaftDummyTimerCallback = proc () {.nimcall, gcsafe.} = discard
+    RaftTimerCallbackCnt = proc (cnt: ref int): RaftTimerCallback =
+      proc () {.gcsafe.} = cnt[].inc
+
+  slowCnt = new(int)
+  slowCnt[] = 0
 
   suite "Create and test basic timers":
 
     test "Create 'slow' and 'fast' timers":
       for i in 0..MAX_TIMERS:
-        slowTimers[i] = RaftTimerCreateCustomImpl(max(SLOW_TIMERS_MIN, rand(SLOW_TIMERS_MAX)), true, RaftDummyTimerCallback)
+        slowTimers[i] = RaftTimerCreateCustomImpl(max(SLOW_TIMERS_MIN, rand(SLOW_TIMERS_MAX)), true, RaftTimerCallbackCnt(slowCnt))
 
       for i in 0..MAX_TIMERS:
         fastTimers[i] = RaftTimerCreateCustomImpl(max(FAST_TIMERS_MIN, rand(FAST_TIMERS_MAX)), true, RaftDummyTimerCallback)
@@ -41,7 +46,8 @@ proc basicTimersMain*() =
     test "Wait for and cancel 'slow' timers":
       waitFor sleepAsync(WAIT_FOR_SLOW_TIMERS)
       for i in 0..MAX_TIMERS:
-        RaftTimerCancelCustomImpl(slowTimers[i])
+        if not slowTimers[i].finished:
+          cancel(slowTimers[i])
 
     test "Final wait timers":
       waitFor sleepAsync(FINAL_WAIT)
@@ -51,14 +57,13 @@ proc basicTimersMain*() =
         pass = true
 
       for i in 0..MAX_TIMERS:
-        if not fastTimers[i].expired:
-          pass = false
-          break
-        if not slowTimers[i].canceled:
+        if not fastTimers[i].finished:
+          debugEcho repr(fastTimers[i])
           pass = false
           break
 
       check pass
+      check slowCnt[] == 0
 
 if isMainModule:
   basicTimersMain()

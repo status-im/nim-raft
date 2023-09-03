@@ -13,9 +13,9 @@ import std/locks
 import options
 import stew/results
 import uuids
-import asyncdispatch
+import chronos
 
-export results, options, locks, uuids, asyncdispatch
+export results, options, locks, uuids, chronos
 
 const
   DefaultUUID* = initUUID(0, 0)             # 00000000-0000-0000-0000-000000000000
@@ -25,7 +25,8 @@ type
     rnsUnknown = 0,
     rnsFollower = 1,
     rnsCandidate = 2
-    rnsLeader = 3
+    rnsLeader = 3,
+    rnsStopped = 4
 
   RaftNodeId* = UUID                        # uuid4 uniquely identifying every Raft Node
   RaftNodeTerm* = uint64                    # Raft Node Term Type
@@ -115,14 +116,14 @@ type
   # Raft Node Object type
   RaftNode*[SmCommandType, SmStateType] = ref object
     # Timers
-    requestVotesTimeout: int
-    heartBeatTimeout: int
-    appendEntriesTimeout: int
+    requestVotesTimeout*: int
+    heartBeatTimeout*: int
+    appendEntriesTimeout*: int
 
-    requestVotesTimer: Future[void]
-    heartBeatTimer: Future[void]
-    heartBeatTimeoutTimer: Future[void]
-    appendEntriesTimer: Future[void]
+    requestVotesTimer*: Future[void]
+    heartBeatTimer*: Future[void]
+    heartBeatTimeoutTimer*: Future[void]
+    appendEntriesTimer*: Future[void]
 
     # Mtx definition(s) go here
     raftStateMutex*: Lock

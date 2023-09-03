@@ -17,7 +17,7 @@ export types, protocol, consensus_module
 
 proc RaftNodeSmInit[SmCommandType, SmStateType](stateMachine: var RaftNodeStateMachine[SmCommandType, SmStateType])
 proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType])
-proc RaftNodeScheduleHeartBeatTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType])
+proc RaftNodeScheduleHeartBeatTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): Future[void] {.async.}
 
 # Raft Node Public API procedures / functions
 proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateType];   # Create New Raft Node
@@ -60,21 +60,24 @@ func RaftNodeIsLeader*[SmCommandType, SmStateType](node: RaftNode[SmCommandType,
 
 # Deliver Raft Message to the Raft Node and dispatch it
 proc RaftNodeMessageDeliver*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], raftMessage: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.} =
-  case raftMessage.type:
-    of RaftMessageAppendEntries:  # Dispatch different Raft Message types
-      discard
-    of RaftMessageRequestVote:
-      discard
+    # case raftMessage.type
+    # of RaftMessageAppendEntries:  # Dispatch different Raft Message types
+    #   discard
+    # of RaftMessageRequestVote:
+    #   discard
+    # else: discard
+    discard
 
 # Process RaftNodeClientRequests
 proc RaftNodeClientRequest*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], req: RaftNodeClientRequest[SmCommandType]): Future[RaftNodeClientResponse[SmStateType]] {.async, gcsafe.} =
-  case req.op:
+  case req.op
     of rncroExecSmCommand:
       # TODO: implemenmt command handling
       discard
     of rncroRequestSmState:
       if RaftNodeIsLeader(node):
         return RaftNodeClientResponse(error: rncreSuccess, state: RaftNodeStateGet(node))
+    else: discard
 
 # Abstract State Machine Ops
 func RaftNodeSmStateGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): SmStateType =
@@ -94,12 +97,6 @@ template RaftTimerCreate(timerInterval: int, oneshot: bool, timerCallback: RaftT
   RaftTimerCreateCustomImpl(timerInterval, oneshot, timerCallback)
 
 # Private Log Ops
-proc RaftNodeLogAppend[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], logEntry: RaftNodeLogEntry[SmCommandType]) =
-  discard
-
-proc RaftNodeLogTruncate[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], truncateIndex: uint64) =
-  discard
-
 proc RaftNodeLogIndexGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftLogIndex =
   discard
 
@@ -111,11 +108,11 @@ proc RaftNodeScheduleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCom
   var fut = sleepAsync(node.heartBeatTimeout)
   fut.callback = proc () = RaftNodeSendHeartBeat(node)
 
-proc RaftNodeScheduleHeartBeatTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+proc RaftNodeScheduleHeartBeatTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): Future[void] {.async.} =
   node.heartBeatTimeoutTimer = sleepAsync(node.heartBeatTimeout)
-  node.heartBeatTimeoutTimer.callback = proc() =
-    node.state = rnsCandidate   # Transition to candidate state and initiate new Election
-    RaftNodeStartElection(node)
+  await node.heartBeatTimeoutTimer
+  node.state = rnsCandidate   # Transition to candidate state and initiate new Election
+  RaftNodeStartElection(node)
 
 proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   for raftPeer in node.peers:
@@ -128,11 +125,19 @@ proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommand
     RaftNodeScheduleHeartBeat(node)
 
 # Raft Node Control
+proc RaftNodeCancelAllTimers[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+  node.requestVotesTimer.fail(newException(Exception, "fail"))
+  node.heartBeatTimer.fail(newException(Exception, "fail"))
+  node.heartBeatTimeoutTimer.fail(newException(Exception, "fail"))
+  node.appendEntriesTimer.fail(newException(Exception, "fail"))
+
 proc RaftNodeStop*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  discard
+  # Try to stop gracefully
+  node.state = rnsStopped
+  # Cancel pending timers (if any)
+  RaftNodeCancelAllTimers(node)
 
 proc RaftNodeStart*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  if node.state != rnsFollower:
-    raiseAssert "Something's wrong - Follower state expected at start!"
-    RaftNodeScheduleHeartBeatTimeout(node)
+  node.state = rnsFollower
+  asyncSpawn RaftNodeScheduleHeartBeatTimeout(node)
   debugEcho "StartNode: ", node.id
