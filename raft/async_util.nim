@@ -6,8 +6,9 @@
 # at your option.
 # This file may not be copied, modified, or distributed except according to
 # those terms.
+
 import asyncdispatch
-import std/time
+import std/times
 
 template awaitWithTimeout[T](operation: Future[T],
                               deadline: Future[void],

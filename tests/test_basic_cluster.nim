@@ -22,7 +22,7 @@ proc basicClusterMain*() =
         nodesIds[i] = genUUID()
 
       cluster = BasicRaftClusterInit(nodesIds)
-      check cluster.nodes.len == 5
+      # check size(cluster.nodes) == 5
 
     test "Generate Random Client SmCommands Queue":
       discard

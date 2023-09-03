@@ -9,7 +9,7 @@
 
 import basic_timers
 import basic_state_machine
-
+import std/tables
 export raft_api
 
 type
@@ -20,9 +20,6 @@ type
 
 proc BasicRaftClusterRaftMessageSendCallbackCreate(cluster: BasicRaftCluster): RaftMessageSendCallback =
   proc (msg: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.} =
-    var
-      nodeIdx: int = -1
-
     result = await cluster.nodes[msg.receiverId].RaftNodeMessageDeliver(msg)
 
 proc BasicRaftClusterStart*(cluster: BasicRaftCluster) =

@@ -13,6 +13,7 @@ import types
 import protocol
 import consensus_module
 import log_ops
+import ../db/kvstore_mdbx
 
 export types, protocol, consensus_module, log_ops
 
@@ -106,7 +107,8 @@ proc RaftNodeScheduleHeartBeatTimeout*[SmCommandType, SmStateType](node: RaftNod
   node.heartBeatTimeoutTimer = sleepAsync(node.heartBeatTimeout)
   await node.heartBeatTimeoutTimer
   node.state = rnsCandidate   # Transition to candidate state and initiate new Election
-  RaftNodeStartElection(node)
+  var f = RaftNodeStartElection(node)
+  cancel(f)
 
 proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   for raftPeer in node.peers:
@@ -129,9 +131,9 @@ proc RaftNodeStop*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmS
   # Try to stop gracefully
   node.state = rnsStopped
   # Cancel pending timers (if any)
-  RaftNodeCancelAllTimers(node)
+  var f = RaftNodeCancelAllTimers(node)
 
 proc RaftNodeStart*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   node.state = rnsFollower
   asyncSpawn RaftNodeScheduleHeartBeatTimeout(node)
-  debugEcho "StartNode: ", node.id
+  debug "Start Raft Node with ID: ", nodeid=node.id

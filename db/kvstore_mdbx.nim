@@ -11,13 +11,13 @@ export Database, CRUD, Collection, Transaction, Cursor, Error, Index, Collatable
 type
   MDBXStoreRef* = ref object of RootObj
     database* {.requiresInit.}: Database
-    chains* {.requiresInit.}: Collection
+    raftNodesData* {.requiresInit.}: Collection
 
   MDBXTransaction* = ref object of RootObj
     transaction: CollectionTransaction
 
 const
-  MaxFileSize = 1024 * 1024 * 1024 * 1024 # 1 TB (MDBX default is 400 MB)
+  MaxFileSize = 1024 * 1024 * 400   #r: 100MB (MDBX default is 400 MB)
 
 # ----------------------------------------------------------------------------------------
 #                         MDBX exception handling helper templates
@@ -62,11 +62,11 @@ proc rollback*(t: MDBXTransaction): ADbTResult[void] =
   ok()
 
 proc beginDbTransaction*(db: MDBXStoreRef): ADbTResult[MDBXTransaction] =
-  if db.chains != nil:
+  if db.raftNodesData != nil:
     handleEx():
-      ok(MDBXTransaction(transaction: db.chains.beginTransaction()))
+      ok(MDBXTransaction(transaction: db.raftNodesData.beginTransaction()))
   else:
-    err("MDBXStoreRef.chains is nil")
+    err("MDBXStoreRef.raftNodesData is nil")
 
 proc put*(t: MDBXTransaction, key, value: openArray[byte]): ADbTResult[void] =
   handleExEx():
@@ -83,13 +83,13 @@ proc del*(t: MDBXTransaction, key: openArray[byte]): ADbTResult[void] =
 # ----------------------------------------------------------------------------------------
 
 template checkDbChainsNotNil(db: MDBXStoreRef, body: untyped) =
-  ## Check if db.chains is not nil and execute the body
+  ## Check if db.raftNodesData is not nil and execute the body
   ## if it is not nil. Otherwise, raise an assert.
   ##
-  if db.chains != nil:
+  if db.raftNodesData != nil:
     body
   else:
-    raiseAssert "MDBXStoreRef.chains is nil"
+    raiseAssert "MDBXStoreRef.raftNodesData is nil"
 
 template withDbSnapshot*(db: MDBXStoreRef, body: untyped) =
   ## Create an MDBX snapshot and execute the body providing
@@ -99,7 +99,7 @@ template withDbSnapshot*(db: MDBXStoreRef, body: untyped) =
   ##
   checkDbChainsNotNil(db):
     handleEx():
-      let cs {.inject.} = db.chains.beginSnapshot()
+      let cs {.inject.} = db.raftNodesData.beginSnapshot()
       defer: cs.finish()
       body
 
@@ -110,7 +110,7 @@ template withDbTransaction*(db: MDBXStoreRef, body: untyped) =
   ##
   checkDbChainsNotNil(db):
     handleEx():
-      var dbTransaction {.inject.} = db.chains.beginTransaction()
+      var dbTransaction {.inject.} = db.raftNodesData.beginTransaction()
       defer: dbTransaction.commit()
       try:
         body
@@ -127,8 +127,11 @@ template withDbTransaction*(db: MDBXStoreRef, body: untyped) =
 # ------------------------------------------------------------------------------------------
 #                        MDBX KvStore interface implementation
 # ------------------------------------------------------------------------------------------
+type
+  DataProc = proc(data: seq[byte])
+  FindProc = proc(data: seq[byte])
 
-proc get*(db: MDBXStoreRef, key: openArray[byte], onData: kvstore.DataProc): Result[bool] =
+proc get*(db: MDBXStoreRef, key: openArray[byte], onData: DataProc): Result[bool, string] =
   if key.len <= 0:
     return err("mdbx: key cannot be empty on get")
 
@@ -140,10 +143,10 @@ proc get*(db: MDBXStoreRef, key: openArray[byte], onData: kvstore.DataProc): Res
     else:
       return ok(false)
 
-proc find*(db: MDBXStoreRef, prefix: openArray[byte], onFind: kvstore.KeyValueProc): Result[int] =
+proc find*(db: MDBXStoreRef, prefix: openArray[byte], onFind: FindProc): Result[int, string] =
   raiseAssert "Unimplemented"
 
-proc put*(db: MDBXStoreRef, key, value: openArray[byte]): Result[void] =
+proc put*(db: MDBXStoreRef, key, value: openArray[byte]): Result[void, string] =
   if key.len <= 0:
     return err("mdbx: key cannot be empty on get")
 
@@ -151,7 +154,7 @@ proc put*(db: MDBXStoreRef, key, value: openArray[byte]): Result[void] =
     dbTransaction.put(asData(key), asData(value))
   ok()
 
-proc contains*(db: MDBXStoreRef, key: openArray[byte]): Result[bool] =
+proc contains*(db: MDBXStoreRef, key: openArray[byte]): Result[bool, string] =
   if key.len <= 0:
     return err("mdbx: key cannot be empty on get")
 
@@ -162,7 +165,7 @@ proc contains*(db: MDBXStoreRef, key: openArray[byte]): Result[bool] =
     else:
       return ok(false)
 
-proc del*(db: MDBXStoreRef, key: openArray[byte]): Result[bool] =
+proc del*(db: MDBXStoreRef, key: openArray[byte]): Result[bool, string] =
   if key.len <= 0:
     return err("mdbx: key cannot be empty on del")
 
@@ -174,7 +177,7 @@ proc del*(db: MDBXStoreRef, key: openArray[byte]): Result[bool] =
     else:
       return ok(false)
 
-proc clear*(db: MDBXStoreRef): Result[bool] =
+proc clear*(db: MDBXStoreRef): Result[bool, string] =
   raiseAssert "Unimplemented"
 
 proc close*(db: MDBXStoreRef) =
@@ -189,21 +192,21 @@ proc close*(db: MDBXStoreRef) =
 # .End.                       MDBX KvStore interface implementation
 # ------------------------------------------------------------------------------------------
 
-proc bulkPutSortedData*[KT: ByteArray32 | ByteArray33](db: MDBXStoreRef, keys: openArray[KT], vals: openArray[seq[byte]]): KvResult[int64] =
-  if keys.len <= 0:
-     return err("mdbx: keys cannot be empty on bulkPutSortedData")
+# proc bulkPutSortedData*[KT: ByteArray32 | ByteArray33](db: MDBXStoreRef, keys: openArray[KT], vals: openArray[seq[byte]]): Result[int64] =
+#   if keys.len <= 0:
+#      return err("mdbx: keys cannot be empty on bulkPutSortedData")
 
-  if keys.len != vals.len:
-    return err("mdbx: keys and vals must have the same length")
+#   if keys.len != vals.len:
+#     return err("mdbx: keys and vals must have the same length")
 
-  withDbTransaction(db):
-    for i in 0 ..< keys.len:
-      dbTransaction.put(asData(keys[i]), asData(vals[i]))
-  return ok(0)
+#   withDbTransaction(db):
+#     for i in 0 ..< keys.len:
+#       dbTransaction.put(asData(keys[i]), asData(vals[i]))
+#   return ok(0)
 
 proc init*(
     T: type MDBXStoreRef, basePath: string, name: string,
-    readOnly = false): KvResult[T] =
+    readOnly = false): Result[T, string] =
   let
     dataDir = basePath / name / "data"
     backupsDir = basePath / name / "backups" # Do we need that in case of MDBX? Should discuss this with @zah
@@ -224,5 +227,5 @@ proc init*(
   handleEx():
     let
       db = openDatabase(dataDir, flags=mdbxFlags, maxFileSize=MaxFileSize)
-      chains = createCollection(db, "chains", StringKeys, BlobValues)
-    ok(T(database: db, chains: chains))
+      raftNodesData = createCollection(db, "raftNodesData", StringKeys, BlobValues)
+    ok(T(database: db, raftNodesData: raftNodesData))

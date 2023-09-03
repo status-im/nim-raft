@@ -32,7 +32,7 @@ type
   RaftNodeTerm* = uint64                    # Raft Node Term Type
   RaftLogIndex* = uint64                    # Raft Node Log Index Type
 
-  RaftNodePeer* = object                    # Raft Node Peer object
+  RaftNodePeer* = ref object                    # Raft Node Peer object
     id*: RaftNodeId
     nextIndex*: RaftLogIndex                # For each peer Raft Node, index of the next log entry to send to that Node
                                             # (initialized to leader last log index + 1)
@@ -116,6 +116,8 @@ type
   # Raft Node Object type
   RaftNode*[SmCommandType, SmStateType] = ref object
     # Timers
+    votesFuts*: seq[Future[RaftMessageResponseBase]]
+
     requestVotesTimeout*: int
     heartBeatTimeout*: int
     appendEntriesTimeout*: int

@@ -9,34 +9,31 @@
 
 import types, protocol, log_ops
 
-proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  var
-    votesFuts: seq[Future[void]]
-
+proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
   node.state = rnsCandidate
-  for p in node.peers:
-    p.votedFor = DefaultUUID
   node.votedFor = node.id
 
   for peer in node.peers:
-    votesFuts.add(node.msgSendCallback(
-        RaftMessageRequestVote(lastLogTerm: RaftNodeLogEntry(RaftNodeLogIndexGet(node)).term, lastLogIndex: RaftNodeLogIndexGet(node), senderTerm: node.currentTerm)
+    peer.hasVoted = false
+    node.votesFuts.add(node.msgSendCallback(
+        RaftMessageRequestVote(lastLogTerm: RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).value.term, lastLogIndex: RaftNodeLogIndexGet(node), senderTerm: node.currentTerm)
       )
     )
 
-    # Process votes
-  for voteFut in votesFuts:
-    await voteFut
+  # Process votes (if any)
+  for voteFut in node.votesFuts:
+    discard await voteFut
     if voteFut.finished and not voteFut.failed:
       for p in node.peers:
-        if p.id == voteFut.senderId:
-          if voteFut.granted:
-            p.votedFor = node.id
-          else:
-            if voteFut.votedFor.initialized:
-              p.votedFor = voteFut.votedFor
+        debugEcho repr(voteFut)
+        # if p.id == voteFut.senderId:
+        #   p.hasVoted = voteFut.granted
+
+  # node.votesFuts.clear
 
 proc RaftNodeAbortElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+  for fut in node.voteFuts:
+    cancel(fut)
   discard
 
 proc RaftNodeProcessRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageRequestVote): Future[RaftMessageRequestVoteResponse] =
