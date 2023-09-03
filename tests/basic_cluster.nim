@@ -16,27 +16,22 @@ type
   BasicRaftNode* = RaftNode[SmCommand, SmState]
 
   BasicRaftCluster* = ref object
-    nodes*: seq[BasicRaftNode]
+    nodes*: Table[RaftNodeId, BasicRaftNode]
 
 proc BasicRaftClusterRaftMessageSendCallbackCreate(cluster: BasicRaftCluster): RaftMessageSendCallback =
   proc (msg: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.} =
     var
       nodeIdx: int = -1
 
-    for i in 0..cluster.nodes.len:
-      if RaftNodeIdGet(cluster.nodes[i]) == msg.receiverId:
-        nodeIdx = i
-        break
-
-    result = await cluster.nodes[nodeIdx].RaftNodeMessageDeliver(msg)
+    result = await cluster.nodes[msg.receiverId].RaftNodeMessageDeliver(msg)
 
 proc BasicRaftClusterStart*(cluster: BasicRaftCluster) =
-  for node in cluster.nodes:
+  for id, node in cluster.nodes:
     RaftNodeStart(node)
 
 proc BasicRaftClusterGetLeader*(cluster: BasicRaftCluster): UUID =
   result = DefaultUUID
-  for node in cluster.nodes:
+  for id, node in cluster.nodes:
     if RaftNodeIsLeader(node):
       return RaftNodeIdGet(node)
 
@@ -50,5 +45,5 @@ proc BasicRaftClusterInit*(nodesIds: seq[RaftNodeId]): BasicRaftCluster =
       peersIds = nodesIds
 
     peersIds.del(peersIds.find(nodeId))
-    result.nodes.add(BasicRaftNode.new(nodeId, peersIds, BasicRaftClusterRaftMessageSendCallbackCreate(result)))
+    result.nodes[nodeId] = BasicRaftNode.new(nodeId, peersIds, BasicRaftClusterRaftMessageSendCallbackCreate(result))
 

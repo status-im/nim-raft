@@ -29,7 +29,8 @@ type
     senderTerm*: RaftNodeTerm               # Sender Raft Node Term
 
   RaftMessageRequestVoteResponse* = ref object of RaftMessageResponseBase
-    granted*: bool
+    granted*: bool                  # Is vote granted?
+    votedFor*: Option[RaftNodeId]   # Present if vote is not granted
 
   RaftMessageAppendEntries*[SmCommandType] = ref object of RaftMessageBase
     prevLogIndex*: RaftLogIndex
