@@ -9,6 +9,7 @@
 
 import unittest2
 import basic_cluster
+import std/times
 
 proc basicClusterMain*() =
   var
@@ -29,6 +30,10 @@ proc basicClusterMain*() =
 
     test "Start Basic Raft Cluster And wait it to converge (Elect a Leader)":
       BasicRaftClusterStart(cluster)
+      var
+        dur: times.Duration
+      dur = initDuration(seconds = 5, milliseconds = 100)
+      waitFor sleepAsync(5000)
 
     test "Simulate Basic Raft Cluster Client SmCommands Execution / Log Replication":
       discard

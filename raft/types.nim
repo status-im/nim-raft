@@ -15,7 +15,12 @@ import stew/results
 import uuids
 import chronos
 
-export results, options, locks, uuids, chronos
+export
+  results,
+  options,
+  locks,
+  uuids,
+  chronos
 
 const
   DefaultUUID* = initUUID(0, 0)             # 00000000-0000-0000-0000-000000000000
@@ -71,10 +76,20 @@ type
   RaftMessageId* = UUID                    # UUID assigned to every Raft Node Message,
                                            # so it can be matched with it's corresponding response etc.
 
-  RaftMessageBase* = ref object of RootObj # Base Type for Raft Protocol Messages
-    msgId*: RaftMessageId                  # Message UUID
-    senderId*: RaftNodeId                  # Sender Raft Node ID
-    receiverId*: RaftNodeId                # Receiver Raft Node ID
+  # Raft Node Messages OPs
+  RaftMessageOps* = enum
+    rmoRequestVote = 0,                    # Request Raft Node vote during election.
+    rmoAppendLogEntry = 1,                 # Append log entry (when replicating) or represent a Heart-Beat
+                                           # if log entries are missing.
+    rmoInstallSnapshot = 2                 # For dynamic adding of new Raft Nodes to speed up the new nodes
+                                           # when they have to catch-up to the currently replicated log.
+
+  RaftMessageBase* = ref object of RootObj # Base Type for Raft Protocol Messages.
+    op*: RaftMessageOps                    # Message op. Used to distinguish between different message types
+                                           # and cast the base class to the correct derived class where necessary.
+    msgId*: RaftMessageId                  # Message UUID.
+    senderId*: RaftNodeId                  # Sender Raft Node ID.
+    receiverId*: RaftNodeId                # Receiver Raft Node ID.
 
   RaftMessageResponseBase* = ref object of RaftMessageBase
 
@@ -82,7 +97,8 @@ type
                                                                                                                      # out of this Raft Node.
 
   # For later use when adding/removing new nodes (dynamic configuration chganges)
-  RaftNodeConfiguration* = object
+  RaftNodeConfiguration* = ref object
+    peers*: RaftNodePeers
 
   # Raft Node Log definition
   LogEntryType* = enum
@@ -91,13 +107,13 @@ type
     etData = 2,
     etNoOp = 3
 
-  RaftNodeLogEntry*[SmCommandType] = object     # Abstarct Raft Node Log entry containing opaque binary data (Blob etc.)
+  RaftNodeLogEntry*[SmCommandType] = object         # Abstarct Raft Node Log entry containing opaque binary data (Blob etc.)
     term*: RaftNodeTerm
     index*: RaftLogIndex
     entryType*: LogEntryType                        # Type of entry - data to append, configuration or no op etc.
     data*: Option[SmCommandType]                    # Entry data (State Machine Command) - this is mutually exclusive with configuration
                                                     # depending on entryType field
-    configuration*: Option[RaftNodeConfiguration]    # Node configuration
+    configuration*: Option[RaftNodeConfiguration]   # Node configuration
 
   RaftNodeLog*[SmCommandType] = object              # Needs more elaborate definition.
                                                     # Probably this will be a RocksDB/MDBX/SQLite Store Wrapper etc.

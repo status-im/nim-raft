@@ -10,6 +10,8 @@
 import basic_timers
 import basic_state_machine
 import std/tables
+import std/random
+
 export raft_api
 
 type
@@ -32,10 +34,17 @@ proc BasicRaftClusterGetLeader*(cluster: BasicRaftCluster): UUID =
     if RaftNodeIsLeader(node):
       return RaftNodeIdGet(node)
 
-proc BasicRaftClusterClientRequest*(cluster: BasicRaftCluster, req: RaftNodeClientRequest): RaftNodeClientResponse =
-  discard
+proc BasicRaftClusterClientRequest*(cluster: BasicRaftCluster, req: RaftNodeClientRequest): Future[RaftNodeClientResponse] {.async.} =
+  case req.op:
+    of rncroRequestSmState:
+      var
+        nodeId = cluster.nodesIds[random(cluster.nodesIds.len)]
+      result =
+    of rncroExecSmCommand:
+      discard
 
 proc BasicRaftClusterInit*(nodesIds: seq[RaftNodeId]): BasicRaftCluster =
+  randomize()
   new(result)
   for nodeId in nodesIds:
     var

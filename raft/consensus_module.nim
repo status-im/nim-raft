@@ -7,42 +7,64 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
-import types, protocol, log_ops
+{.hint[XDeclaredButNotUsed]: off.}
+
+import types
+import protocol
+import log_ops
+import chronicles
 
 proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
-  node.state = rnsCandidate
-  node.votedFor = node.id
+  withLock(node.raftStateMutex):
+    debug "Raft Node started election. Node ID: ", node_id=node.id
+    node.currentTerm.inc
+    node.state = rnsCandidate
+    node.votedFor = node.id
 
-  for peer in node.peers:
-    peer.hasVoted = false
-    node.votesFuts.add(node.msgSendCallback(
-        RaftMessageRequestVote(lastLogTerm: RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).value.term, lastLogIndex: RaftNodeLogIndexGet(node), senderTerm: node.currentTerm)
+    for peer in node.peers:
+      peer.hasVoted = false
+      node.votesFuts.add(node.msgSendCallback(
+          RaftMessageRequestVote(lastLogTerm: RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).value.term, lastLogIndex: RaftNodeLogIndexGet(node), senderTerm: node.currentTerm)
+        )
       )
-    )
 
   # Process votes (if any)
   for voteFut in node.votesFuts:
-    discard await voteFut
-    if voteFut.finished and not voteFut.failed:
-      for p in node.peers:
-        debugEcho repr(voteFut)
-        # if p.id == voteFut.senderId:
-        #   p.hasVoted = voteFut.granted
+    var
+      r: RaftMessageRequestVoteResponse
 
-  # node.votesFuts.clear
+    r = RaftMessageRequestVoteResponse(waitFor voteFut)
+
+    debug "voteFut.finished", voteFut_finished=voteFut.finished
+
+    withLock(node.raftStateMutex):
+      for p in node.peers:
+        debug "voteFut: ", Response=repr(r)
+        debug "senderId: ", sender_id=r.senderId
+        debug "granted: ", granted=r.granted
+        if p.id == r.senderId:
+          p.hasVoted = r.granted
+
+  withLock(node.raftStateMutex):
+    node.votesFuts.clear
 
 proc RaftNodeAbortElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  for fut in node.voteFuts:
-    cancel(fut)
+  withLock(node.raftStateMutex):
+    for fut in node.voteFuts:
+      if not fut.finished and not fut.failed:
+        cancel(fut)
+
+proc RaftNodeProcessRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageRequestVote): RaftMessageRequestVoteResponse =
+  withLock(node.raftStateMutex):
+    result = RaftMessageRequestVoteResponse(msgId: msg.msgId, senderId: msg.senderId, receiverId: msg.reciverId, granted: false)
+    if msg.senderTerm > node.term:
+      if msg.lastLogIndex >= RaftNodeLogIndexGet(node) and msg.lastLogTerm >= RaftNodeLogEntryGet(RaftNodeLogIndexGet(node)).term:
+        result.granted = true
+
+proc RaftNodeProcessAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse =
   discard
 
-proc RaftNodeProcessRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageRequestVote): Future[RaftMessageRequestVoteResponse] =
-  if msg.senderTerm > node.term:
-    if msg.lastLogIndex >= RaftNodeLogIndexGet(node) and msg.lastLogTerm >= RaftNodeLogEntryGet(RaftNodeLogIndexGet(node)).term:
-      # grant vote
-      discard
-
-proc RaftNodeProcessAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageAppendEntries): Future[RaftMessageAppendEntriesResponse] =
+proc RaftNodeProcessHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse =
   discard
 
 proc RaftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): bool =

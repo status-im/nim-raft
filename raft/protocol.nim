@@ -7,18 +7,12 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
-                        #                              #
+                        # **************************** #
                         #   Raft Protocol definition   #
-                        #                              #
+                        # **************************** #
 import types
 
 type
-  # Raft Node Messages OPs
-  RaftMessageOps* = enum
-    rmoRequestVote = 0,
-    rmoAppendLogEntry = 1,
-    rmoInstallSnapshot = 2                    # For dynamic adding of new Raft Nodes
-
   RaftMessageRespoonseError* = enum           # Raft message response errors
     rmreSuccess = 0,
     rmreFail = 1
@@ -59,6 +53,7 @@ type
     payload*: Option[SmCommandType]  # Optional RaftMessagePayload carrying a Log Entry
 
   RaftNodeClientResponse*[SmStateType] = ref object
+    nodeId*: RaftNodeId
     error*: RaftNodeClientResponseError
     state*: Option[SmStateType]                         # Optional Raft Abstract State Machine State
     raftNodeRedirectId*: Option[RaftNodeId]             # Optional Raft Node ID to redirect the request to in case of failure

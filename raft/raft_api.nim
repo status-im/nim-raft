@@ -7,21 +7,28 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
-import chronicles
+{.hint[XDeclaredButNotUsed]: off.}
 
 import types
 import protocol
 import consensus_module
 import log_ops
 import ../db/kvstore_mdbx
+import chronicles
 
-export types, protocol, consensus_module, log_ops
+export
+  types,
+  protocol,
+  consensus_module,
+  log_ops,
+  chronicles
 
+# Forward declarations
 proc RaftNodeSmInit[SmCommandType, SmStateType](stateMachine: var RaftNodeStateMachine[SmCommandType, SmStateType])
 proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType])
 proc RaftNodeScheduleHeartBeatTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): Future[void] {.async.}
 
-# Raft Node Public API procedures / functions
+# Raft Node Public API
 proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateType];   # Create New Raft Node
                   id: RaftNodeId; peersIds: seq[RaftNodeId];
                   # persistentStorage: RaftNodePersistentStorage,
@@ -62,24 +69,27 @@ func RaftNodeIsLeader*[SmCommandType, SmStateType](node: RaftNode[SmCommandType,
 
 # Deliver Raft Message to the Raft Node and dispatch it
 proc RaftNodeMessageDeliver*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], raftMessage: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.} =
-    # case raftMessage.type
-    # of RaftMessageAppendEntries:  # Dispatch different Raft Message types
-    #   discard
-    # of RaftMessageRequestVote:
-    #   discard
-    # else: discard
+    case raftMessage.op
+    of rmoRequestVote:    # Dispatch different Raft Message types based on the operation code
+      discard
+    of rmoAppendLogEntry:
+      discard
+    else: discard
     discard
 
 # Process RaftNodeClientRequests
-proc RaftNodeClientRequest*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], req: RaftNodeClientRequest[SmCommandType]): Future[RaftNodeClientResponse[SmStateType]] {.async, gcsafe.} =
+proc RaftNodeServeClientRequest*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], req: RaftNodeClientRequest[SmCommandType]): Future[RaftNodeClientResponse[SmStateType]] {.async, gcsafe.} =
   case req.op
     of rncroExecSmCommand:
       # TODO: implemenmt command handling
       discard
     of rncroRequestSmState:
       if RaftNodeIsLeader(node):
-        return RaftNodeClientResponse(error: rncreSuccess, state: RaftNodeStateGet(node))
-    else: discard
+        return RaftNodeClientResponse(nodeId: node.id, error: rncreSuccess, state: RaftNodeStateGet(node))
+      else:
+        return RaftNodeClientResponse(nodeId: node.id, error: rncreNotLeader, currentLeaderId: node.currentLeaderId)
+    else:
+      raiseAssert "Unknown client request operation."
 
 # Abstract State Machine Ops
 func RaftNodeSmStateGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): SmStateType =
@@ -117,7 +127,7 @@ proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommand
       senderTerm: RaftNodeTermGet(node), commitIndex: node.commitIndex,
       prevLogIndex: RaftNodeLogIndexGet(node) - 1, prevLogTerm: if RaftNodeLogIndexGet(node) > 0: RaftNodeLogEntry(node, RaftNodeLogIndexGet(node) - 1).term else: 0
     )
-    asyncCheck node.msgSendCallback(msgHrtBt)
+    asyncSpawn node.msgSendCallback(msgHrtBt)
     RaftNodeScheduleHeartBeat(node)
 
 # Raft Node Control

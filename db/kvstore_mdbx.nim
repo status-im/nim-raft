@@ -11,7 +11,7 @@ export Database, CRUD, Collection, Transaction, Cursor, Error, Index, Collatable
 type
   MDBXStoreRef* = ref object of RootObj
     database* {.requiresInit.}: Database
-    raftNodesData* {.requiresInit.}: Collection
+    raftNodeData* {.requiresInit.}: Collection
 
   MDBXTransaction* = ref object of RootObj
     transaction: CollectionTransaction
@@ -62,9 +62,9 @@ proc rollback*(t: MDBXTransaction): ADbTResult[void] =
   ok()
 
 proc beginDbTransaction*(db: MDBXStoreRef): ADbTResult[MDBXTransaction] =
-  if db.raftNodesData != nil:
+  if db.raftNodeData != nil:
     handleEx():
-      ok(MDBXTransaction(transaction: db.raftNodesData.beginTransaction()))
+      ok(MDBXTransaction(transaction: db.raftNodeData.beginTransaction()))
   else:
     err("MDBXStoreRef.raftNodesData is nil")
 
@@ -86,7 +86,7 @@ template checkDbChainsNotNil(db: MDBXStoreRef, body: untyped) =
   ## Check if db.raftNodesData is not nil and execute the body
   ## if it is not nil. Otherwise, raise an assert.
   ##
-  if db.raftNodesData != nil:
+  if db.raftNodeData != nil:
     body
   else:
     raiseAssert "MDBXStoreRef.raftNodesData is nil"
@@ -99,7 +99,7 @@ template withDbSnapshot*(db: MDBXStoreRef, body: untyped) =
   ##
   checkDbChainsNotNil(db):
     handleEx():
-      let cs {.inject.} = db.raftNodesData.beginSnapshot()
+      let cs {.inject.} = db.raftNodeData.beginSnapshot()
       defer: cs.finish()
       body
 
@@ -110,7 +110,7 @@ template withDbTransaction*(db: MDBXStoreRef, body: untyped) =
   ##
   checkDbChainsNotNil(db):
     handleEx():
-      var dbTransaction {.inject.} = db.raftNodesData.beginTransaction()
+      var dbTransaction {.inject.} = db.raftNodeData.beginTransaction()
       defer: dbTransaction.commit()
       try:
         body
@@ -227,5 +227,5 @@ proc init*(
   handleEx():
     let
       db = openDatabase(dataDir, flags=mdbxFlags, maxFileSize=MaxFileSize)
-      raftNodesData = createCollection(db, "raftNodesData", StringKeys, BlobValues)
-    ok(T(database: db, raftNodesData: raftNodesData))
+      raftNodeData = createCollection(db, "raftNodeData", StringKeys, BlobValues)
+    ok(T(database: db, raftNodeData: raftNodeData))
