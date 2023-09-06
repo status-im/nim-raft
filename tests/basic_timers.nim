@@ -11,6 +11,8 @@ import ../raft/raft_api
 
 export raft_api
 
-proc RaftTimerCreateCustomImpl*(timerInterval: int, oneshot: bool, timerCallback: RaftTimerCallback): Future[void] {.async, nimcall, gcsafe.} =
-  await sleepAsync(timerInterval)
-  timerCallback()
+proc RaftTimerCreateCustomImpl*(timerInterval: int, timerCallback: RaftTimerCallback): Future[void] {.async, nimcall, gcsafe.} =
+  var f = sleepAsync(timerInterval)
+  await f
+  if not f.cancelled:
+    timerCallback()

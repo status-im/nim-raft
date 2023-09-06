@@ -119,14 +119,6 @@ type
                                                     # Probably this will be a RocksDB/MDBX/SQLite Store Wrapper etc.
     logData*: seq[RaftNodeLogEntry[SmCommandType]]  # Raft Node Log Data
 
-  # Timer types
-  RaftTimer* = ref object
-    mtx*: Lock
-    canceled*: bool
-    expired*: bool
-    timeout*: int
-    oneshot*: bool
-
   RaftTimerCallback* = proc () {.gcsafe.}   # Pass any function wrapped in a closure
 
   # Raft Node Object type

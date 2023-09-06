@@ -14,6 +14,16 @@ import protocol
 import log_ops
 import chronicles
 
+proc RaftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): bool =
+  result = false
+  withLock(node.raftStateMutex):
+    var cnt = 0
+    for peer in node.peers:
+      if peer.hasVoted:
+        cnt.inc
+    if cnt >= (node.peers.len div 2 + 1):
+      result = true
+
 proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
   withLock(node.raftStateMutex):
     debug "Raft Node started election. Node ID: ", node_id=node.id
@@ -24,56 +34,52 @@ proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
     for peer in node.peers:
       peer.hasVoted = false
       node.votesFuts.add(node.msgSendCallback(
-          RaftMessageRequestVote(lastLogTerm: RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).value.term, lastLogIndex: RaftNodeLogIndexGet(node), senderTerm: node.currentTerm)
+          RaftMessageRequestVote(
+            op: rmoRequestVote, msgId: genUUID(), senderId: node.id,
+            receiverId: peer.id, lastLogTerm: RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term,
+            lastLogIndex: RaftNodeLogIndexGet(node), senderTerm: node.currentTerm)
         )
       )
 
   # Process votes (if any)
   for voteFut in node.votesFuts:
-    var
-      r: RaftMessageRequestVoteResponse
+    let r = await voteFut
+    let respVote = RaftMessageRequestVoteResponse(r)
 
-    r = RaftMessageRequestVoteResponse(waitFor voteFut)
-
+    debugEcho "r: ", repr(r)
     debug "voteFut.finished", voteFut_finished=voteFut.finished
 
     withLock(node.raftStateMutex):
       for p in node.peers:
         debug "voteFut: ", Response=repr(r)
-        debug "senderId: ", sender_id=r.senderId
-        debug "granted: ", granted=r.granted
-        if p.id == r.senderId:
-          p.hasVoted = r.granted
+        debug "senderId: ", sender_id=respVote.senderId
+        debug "granted: ", granted=respVote.granted
+        if p.id == respVote.senderId:
+          p.hasVoted = respVote.granted
 
   withLock(node.raftStateMutex):
-    node.votesFuts.clear
+    while node.votesFuts.len > 0:
+      discard node.votesFuts.pop
 
-proc RaftNodeAbortElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   withLock(node.raftStateMutex):
-    for fut in node.voteFuts:
-      if not fut.finished and not fut.failed:
-        cancel(fut)
+    if node.state == rnsCandidate:
+      if RaftNodeQuorumMin(node):
+        node.state = rnsLeader  # Transition to leader and send Heart-Beat to establish this node as the cluster leader
+        RaftNodeSendHeartBeat(node)
+      else:
+        asyncSpawn RaftNodeStartElection(node)
 
-proc RaftNodeProcessRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageRequestVote): RaftMessageRequestVoteResponse =
+proc RaftNodeHandleRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageRequestVote): RaftMessageRequestVoteResponse =
   withLock(node.raftStateMutex):
-    result = RaftMessageRequestVoteResponse(msgId: msg.msgId, senderId: msg.senderId, receiverId: msg.reciverId, granted: false)
-    if msg.senderTerm > node.term:
-      if msg.lastLogIndex >= RaftNodeLogIndexGet(node) and msg.lastLogTerm >= RaftNodeLogEntryGet(RaftNodeLogIndexGet(node)).term:
+    result = RaftMessageRequestVoteResponse(msgId: msg.msgId, senderId: node.id, receiverId: msg.senderId, granted: false)
+    if node.state != rnsCandidate and node.state != rnsStopped and msg.senderTerm > node.currentTerm:
+      if msg.lastLogIndex >= RaftNodeLogIndexGet(node) and msg.lastLogTerm >= RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term:
         result.granted = true
 
-proc RaftNodeProcessAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse =
-  discard
-
-proc RaftNodeProcessHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse =
-  discard
-
-proc RaftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): bool =
+proc RaftNodeHandleAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse[SmStateType] =
   discard
 
 proc RaftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], cmd: SmCommandType) =
-  discard
-
-proc RaftNodeScheduleRequestVotesCleanUpTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   discard
 
 proc RaftNodeLogAppend[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], logEntry: RaftNodeLogEntry[SmCommandType]) =

@@ -33,7 +33,7 @@ proc basicClusterMain*() =
       var
         dur: times.Duration
       dur = initDuration(seconds = 5, milliseconds = 100)
-      waitFor sleepAsync(5000)
+      waitFor sleepAsync(500)
 
     test "Simulate Basic Raft Cluster Client SmCommands Execution / Log Replication":
       discard

@@ -28,7 +28,7 @@ proc BasicRaftClusterStart*(cluster: BasicRaftCluster) =
   for id, node in cluster.nodes:
     RaftNodeStart(node)
 
-proc BasicRaftClusterGetLeader*(cluster: BasicRaftCluster): UUID =
+proc BasicRaftClusterGetLeaderId*(cluster: BasicRaftCluster): UUID =
   result = DefaultUUID
   for id, node in cluster.nodes:
     if RaftNodeIsLeader(node):
@@ -38,8 +38,10 @@ proc BasicRaftClusterClientRequest*(cluster: BasicRaftCluster, req: RaftNodeClie
   case req.op:
     of rncroRequestSmState:
       var
-        nodeId = cluster.nodesIds[random(cluster.nodesIds.len)]
-      result =
+        nodeId = cluster.nodesIds[BasicRaftClusterGetLeaderId(cluster)]
+
+      result = await cluster.nodes[nodeId].RaftNodeServeClientRequest(req)
+
     of rncroExecSmCommand:
       discard
 
