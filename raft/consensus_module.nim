@@ -16,7 +16,7 @@ import chronicles
 
 proc RaftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): bool =
   result = false
-  withLock(node.raftStateMutex):
+  withRLock(node.raftStateMutex):
     var cnt = 0
     for peer in node.peers:
       if peer.hasVoted:
@@ -25,11 +25,11 @@ proc RaftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType,
       result = true
 
 proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
-  withLock(node.raftStateMutex):
-    debug "Raft Node started election. Node ID: ", node_id=node.id
+  withRLock(node.raftStateMutex):
     node.currentTerm.inc
     node.state = rnsCandidate
     node.votedFor = node.id
+    debug "Raft Node started election", node_id=node.id, state=node.state, voted_for=node.votedFor
 
     for peer in node.peers:
       peer.hasVoted = false
@@ -45,35 +45,32 @@ proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
   for voteFut in node.votesFuts:
     let r = await voteFut
     let respVote = RaftMessageRequestVoteResponse(r)
+    debug "Received vote", node_id=node.id, sender_id=respVote.senderId, granted=respVote.granted
 
-    debugEcho "r: ", repr(r)
-    debug "voteFut.finished", voteFut_finished=voteFut.finished
-
-    withLock(node.raftStateMutex):
+    withRLock(node.raftStateMutex):
       for p in node.peers:
-        debug "voteFut: ", Response=repr(r)
-        debug "senderId: ", sender_id=respVote.senderId
-        debug "granted: ", granted=respVote.granted
         if p.id == respVote.senderId:
           p.hasVoted = respVote.granted
 
-  withLock(node.raftStateMutex):
+  withRLock(node.raftStateMutex):
     while node.votesFuts.len > 0:
       discard node.votesFuts.pop
 
-  withLock(node.raftStateMutex):
+  withRLock(node.raftStateMutex):
     if node.state == rnsCandidate:
       if RaftNodeQuorumMin(node):
+        debug "Raft Node transition to leader", node_id=node.id
         node.state = rnsLeader  # Transition to leader and send Heart-Beat to establish this node as the cluster leader
-        RaftNodeSendHeartBeat(node)
+        asyncSpawn RaftNodeSendHeartBeat(node)
       else:
         asyncSpawn RaftNodeStartElection(node)
 
 proc RaftNodeHandleRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageRequestVote): RaftMessageRequestVoteResponse =
-  withLock(node.raftStateMutex):
+  withRLock(node.raftStateMutex):
     result = RaftMessageRequestVoteResponse(msgId: msg.msgId, senderId: node.id, receiverId: msg.senderId, granted: false)
-    if node.state != rnsCandidate and node.state != rnsStopped and msg.senderTerm > node.currentTerm:
+    if node.state != rnsCandidate and node.state != rnsStopped and msg.senderTerm > node.currentTerm and node.votedFor == DefaultUUID:
       if msg.lastLogIndex >= RaftNodeLogIndexGet(node) and msg.lastLogTerm >= RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term:
+        node.votedFor = msg.senderId
         result.granted = true
 
 proc RaftNodeHandleAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse[SmStateType] =

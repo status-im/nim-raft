@@ -9,7 +9,7 @@
 
 # Raft Node Public Types
 
-import std/locks
+import std/rlocks
 import options
 import stew/results
 import uuids
@@ -18,7 +18,7 @@ import chronos
 export
   results,
   options,
-  locks,
+  rlocks,
   uuids,
   chronos
 
@@ -136,7 +136,7 @@ type
     appendEntriesTimer*: Future[void]
 
     # Mtx definition(s) go here
-    raftStateMutex*: Lock
+    raftStateMutex*: RLock
 
     # Misc
     msgSendCallback*: RaftMessageSendCallback
