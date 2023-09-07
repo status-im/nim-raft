@@ -26,9 +26,9 @@ proc basicClusterMain*() =
     test "Generate Random Client SmCommands Queue":
       discard
 
-    test "Start Basic Raft Cluster And wait it to converge (Elect a Leader)":
+    test "Start Basic Raft Cluster And wait it to converge 10s (Elect a Leader)":
       BasicRaftClusterStart(cluster)
-      let dur = seconds(60)
+      let dur = seconds(10)
       waitFor sleepAsync(dur)
 
     test "Simulate Basic Raft Cluster Client SmCommands Execution / Log Replication":
