@@ -130,9 +130,8 @@ type
     heartBeatTimeout*: int
     appendEntriesTimeout*: int
 
-    requestVotesTimer*: Future[void]
     heartBeatTimer*: Future[void]
-    heartBeatTimeoutTimer*: Future[void]
+    electionTimeoutTimer*: Future[void]
     appendEntriesTimer*: Future[void]
 
     # Mtx definition(s) go here

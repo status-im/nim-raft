@@ -9,7 +9,6 @@
 
 import unittest2
 import basic_cluster
-import std/times
 
 proc basicClusterMain*() =
   var
@@ -23,17 +22,14 @@ proc basicClusterMain*() =
         nodesIds[i] = genUUID()
 
       cluster = BasicRaftClusterInit(nodesIds)
-      # check size(cluster.nodes) == 5
 
     test "Generate Random Client SmCommands Queue":
       discard
 
     test "Start Basic Raft Cluster And wait it to converge (Elect a Leader)":
       BasicRaftClusterStart(cluster)
-      var
-        dur: times.Duration
-      dur = initDuration(seconds = 5, milliseconds = 100)
-      waitFor sleepAsync(500)
+      let dur = seconds(5)
+      waitFor sleepAsync(dur)
 
     test "Simulate Basic Raft Cluster Client SmCommands Execution / Log Replication":
       discard
