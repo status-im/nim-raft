@@ -7,8 +7,6 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
-{.hint[XDeclaredButNotUsed]: off.}
-
 import types
 import protocol
 import log_ops
@@ -23,6 +21,36 @@ proc RaftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType,
         cnt.inc
     if cnt >= (node.peers.len div 2 + 1):
       result = true
+
+proc RaftNodeHandleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse[SmStateType] =
+  debug "Received heart-beat", node_id=node.id, sender_id=msg.sender_id, node_current_term=node.currentTerm, sender_term=msg.senderTerm
+  result = RaftMessageAppendEntriesResponse[SmStateType](op: rmoAppendLogEntry, senderId: node.id, receiverId: msg.senderId, msgId: msg.msgId, success: false)
+  withRLock(node.raftStateMutex):
+    if msg.senderTerm >= node.currentTerm:
+      RaftNodeCancelAllTimers(node)
+      if node.state == rnsCandidate:
+        RaftNodeAbortElection(node)
+      result.success = true
+      node.currentTerm = msg.senderTerm
+      node.votedFor = DefaultUUID
+      node.currentLeaderId = msg.senderId
+      RaftNodeScheduleElectionTimeout(node)
+
+proc RaftNodeHandleRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageRequestVote): RaftMessageRequestVoteResponse =
+  withRLock(node.raftStateMutex):
+    result = RaftMessageRequestVoteResponse(msgId: msg.msgId, senderId: node.id, receiverId: msg.senderId, granted: false)
+    if node.state != rnsCandidate and node.state != rnsStopped and msg.senderTerm > node.currentTerm and node.votedFor == DefaultUUID:
+      # if msg.lastLogIndex >= RaftNodeLogIndexGet(node) and msg.lastLogTerm >= RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term:
+      asyncSpawn cancelAndWait(node.electionTimeoutTimer)
+      node.votedFor = msg.senderId
+      result.granted = true
+      RaftNodeScheduleElectionTimeout(node)
+
+proc RaftNodeAbortElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+  withRLock(node.raftStateMutex):
+    node.state = rnsFollower
+    for fut in node.votesFuts:
+        waitFor cancelAndWait(fut)
 
 proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
   withRLock(node.raftStateMutex):
@@ -60,27 +88,11 @@ proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
       if RaftNodeQuorumMin(node):
         asyncSpawn cancelAndWait(node.electionTimeoutTimer)
         debug "Raft Node transition to leader", node_id=node.id
-        node.state = rnsLeader  # Transition to leader and send Heart-Beat to establish this node as the cluster leader
+        node.state = rnsLeader        # Transition to leader state and send Heart-Beat to establish this node as the cluster leader
         asyncSpawn RaftNodeSendHeartBeat(node)
-
-proc RaftNodeHandleRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageRequestVote): RaftMessageRequestVoteResponse =
-  withRLock(node.raftStateMutex):
-    result = RaftMessageRequestVoteResponse(msgId: msg.msgId, senderId: node.id, receiverId: msg.senderId, granted: false)
-    if node.state != rnsCandidate and node.state != rnsStopped and msg.senderTerm > node.currentTerm and node.votedFor == DefaultUUID:
-      # if msg.lastLogIndex >= RaftNodeLogIndexGet(node) and msg.lastLogTerm >= RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term:
-      asyncSpawn cancelAndWait(node.electionTimeoutTimer)
-      node.votedFor = msg.senderId
-      result.granted = true
-      RaftNodeScheduleElectionTimeout(node)
 
 proc RaftNodeHandleAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse[SmStateType] =
   discard
 
 proc RaftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], cmd: SmCommandType) =
-  discard
-
-proc RaftNodeLogAppend[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], logEntry: RaftNodeLogEntry[SmCommandType]) =
-  discard
-
-proc RaftNodeLogTruncate[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], truncateIndex: uint64) =
   discard

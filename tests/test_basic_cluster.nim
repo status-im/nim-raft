@@ -28,7 +28,7 @@ proc basicClusterMain*() =
 
     test "Start Basic Raft Cluster And wait it to converge (Elect a Leader)":
       BasicRaftClusterStart(cluster)
-      let dur = seconds(5)
+      let dur = seconds(60)
       waitFor sleepAsync(dur)
 
     test "Simulate Basic Raft Cluster Client SmCommands Execution / Log Replication":

@@ -12,7 +12,7 @@ import ../raft/raft_api
 export raft_api
 
 proc RaftTimerCreateCustomImpl*(timerInterval: int, timerCallback: RaftTimerCallback): Future[void] {.async, nimcall, gcsafe.} =
-  var f = sleepAsync(timerInterval)
+  var f = sleepAsync(milliseconds(timerInterval))
   await f
   if not f.cancelled:
     timerCallback()
