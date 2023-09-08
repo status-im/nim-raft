@@ -1,0 +1,10 @@
+version: '3.1'
+
+services:
+  nim_raft_node:
+    image: nim_raft_node
+    restart: always
+    volumes:
+      - ./config.json:/app/config.json
+
+# You get the idea. To run the image N times with possibly different configs
