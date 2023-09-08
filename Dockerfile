@@ -1,4 +1,4 @@
-FROM debian:buster-slim AS base
+FROM debian:bookworm-slim AS base
 
 USER root
 # Non-Interactive packages install/upgrade
@@ -11,13 +11,7 @@ WORKDIR /app
 
 #  Install pre-requisites
 RUN apt-get update && apt-get upgrade -y && apt-get clean
-RUN apt-get install -y python3 python3-dev python3-distutils gnupg wget unzip procps nano tar
-
-# Install pip
-RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
-    python3 get-pip.py --force-reinstall && \
-    rm get-pip.py
-RUN apt-get update -y
+RUN apt-get install -y python3 python3-dev python3-pip python3-distutils python3-tornado gnupg wget unzip procps nano tar vim tshark
 
 # Install Python pip packages dependencies (if any)
 # RUN pip3 install -r requirements.txt
