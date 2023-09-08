@@ -7,7 +7,6 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 WORKDIR /app
 # copy the content of the local directory to the working directory
 COPY . .
-WORKDIR /app
 
 #  Install pre-requisites
 RUN apt-get update && apt-get upgrade -y && apt-get clean

@@ -5,6 +5,6 @@ services:
     image: nim_raft_node
     restart: always
     volumes:
-      - ./config.json:/app/config.json
+      - ./raft_node_config.json:/app/raft_node_config.json
 
 # You get the idea. To run the image N times with possibly different configs
