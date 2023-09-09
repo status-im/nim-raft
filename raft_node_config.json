@@ -1,16 +1,34 @@
 {
     "raftPeers":[
         {
-            "id": "00000000000000000000000000000000000",
+            "id": "f9695ea4-4f37-11ee-8e75-8ff5a48faa42",
             "host": "127.0.0.1",
-            "port": 7777,
+            "port": 7771,
             "friendly_name": "Raft Node 1"
         },
         {
-            "id": "00000000000000000000000000000000000",
+            "id": "04fd202a-4f38-11ee-9ee2-23aba7dde7d3",
             "host": "127.0.0.1",
-            "port": 7777,
+            "port": 7772,
             "friendly_name": "Raft Node 2 etc."            
+        },
+        {
+            "id": "09f3e6b8-4f38-11ee-a221-4b348f8bbde7",
+            "host": "127.0.0.1",
+            "port": 7773,
+            "friendly_name": "Raft Node 3 etc."            
+        },
+        {
+            "id": "0edc0976-4f38-11ee-b1ad-5b3b0f690e65",
+            "host": "127.0.0.1",
+            "port": 7774,
+            "friendly_name": "Raft Node 4 etc."            
+        },
+        {
+            "id": "130d0662-4f38-11ee-a6ed-2746aae5bc0b",
+            "host": "127.0.0.1",
+            "port": 7775,
+            "friendly_name": "Raft Node 5 etc."            
         }
     ]
 }
