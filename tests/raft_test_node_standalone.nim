@@ -3,6 +3,7 @@ import basic_state_machine
 import std/json
 import uuids
 import chronicles
+import msgpack4nim
 
 type
   RaftPeerConf = object
@@ -24,4 +25,5 @@ proc loadConfig() =
   info "Conf", config=repr(conf)
 
 if isMainModule:
+  loadConfig()
   var node = RaftNode[SmCommand, SmState].new()
