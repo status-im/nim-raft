@@ -29,7 +29,11 @@ proc RaftNodeSmInit[SmCommandType, SmStateType](stateMachine: var RaftNodeStateM
 proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateType];   # Create New Raft Node
                   id: RaftNodeId; peersIds: seq[RaftNodeId];
                   # persistentStorage: RaftNodePersistentStorage,
-                  msgSendCallback: RaftMessageSendCallback): T =
+                  msgSendCallback: RaftMessageSendCallback,
+                  electionTimeout: int=150,
+                  heartBeatTimeout: int=180,
+                  appendEntriesTimeout: int=150)
+): T =
   var
     peers: RaftNodePeers
 
@@ -39,7 +43,7 @@ proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateTyp
   result = T(
     id: id, state: rnsFollower, currentTerm: 0, peers: peers, commitIndex: 0, lastApplied: 0,
     msgSendCallback: msgSendCallback, votedFor: DefaultUUID, currentLeaderId: DefaultUUID,
-
+    electionTimeout: electionTimeout, heartBeatTimeout: heartBeatTimeout, appendEntriesTimeout: appendEntriesTimeout
   )
 
   RaftNodeSmInit(result.stateMachine)
@@ -118,7 +122,7 @@ template RaftTimerCreate(timerInterval: int, timerCallback: RaftTimerCallback): 
 
 # Timers scheduling stuff etc.
 proc RaftNodeScheduleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  node.heartBeatTimer = RaftTimerCreate(150, proc() = asyncSpawn RaftNodeSendHeartBeat(node))
+  node.heartBeatTimer = RaftTimerCreate(node.heartBeatTimeout, proc() = asyncSpawn RaftNodeSendHeartBeat(node))
 
 proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
   debug "Raft Node sending Heart-Beat to peers", node_id=node.id
@@ -134,7 +138,7 @@ proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommand
   RaftNodeScheduleHeartBeat(node)
 
 proc RaftNodeScheduleElectionTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  node.electionTimeoutTimer = RaftTimerCreate(150 + rand(150), proc =
+  node.electionTimeoutTimer = RaftTimerCreate(node.electionTimeout + rand(node.electionTimeout), proc =
     asyncSpawn RaftNodeStartElection(node)
   )
 
