@@ -5,8 +5,8 @@ import sys
 import errno
 import msgpack
 
-writeFIFO = '/home/raych/prg/nim-raft/RAFTNODESENDMSGRESPPIPE'
-readFIFO = '/home/raych/prg/nim-raft/RAFTNODERECEIVEMSGPIPE'
+writeFIFO = '/home/raych/prg/nim-raft/RAFTNODERECEIVEMSGPIPE'
+readFIFO = '/home/raych/prg/nim-raft/RAFTNODESENDMSGRESPPIPE'
 
 def writeFifo(data):
     with open(writeFIFO, "a") as fw:
@@ -26,9 +26,8 @@ def readPipe():
 class MainHandler(tornado.web.RequestHandler):
     def post(self):
         s = self.request.body.decode("utf-8")
-        print(s)
         writeFifo(s)
-        self.write(msgpack.dumps(readPipe()))
+        self.write(readPipe())
 
     def get(self):
         self.write("Hello, world")
@@ -42,7 +41,6 @@ def make_app():
 async def main():
     if len(sys.argv) < 2:
         print("Usage: tornado_simple_raft_node_server.py <port>")
-        shutdown_event.set()
         return
     app = make_app()
     app.listen(int(sys.argv[1]))
@@ -56,7 +54,7 @@ if __name__ == "__main__":
         if oe.errno != errno.EEXIST:
             raise
     
-    readPipe()
+    # readPipe()
     
     asyncio.run(main())
                 
