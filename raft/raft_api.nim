@@ -26,14 +26,14 @@ export
 proc RaftNodeSmInit[SmCommandType, SmStateType](stateMachine: var RaftNodeStateMachine[SmCommandType, SmStateType])
 
 # Raft Node Public API
-proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateType];   # Create New Raft Node
+proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateType];
                   id: RaftNodeId; peersIds: seq[RaftNodeId];
                   # persistentStorage: RaftNodePersistentStorage,
-                  msgSendCallback: RaftMessageSendCallback,
-                  electionTimeout: int=150,
-                  heartBeatTimeout: int=180,
-                  appendEntriesTimeout: int=150)
-): T =
+                  msgSendCallback: RaftMessageSendCallback;
+                  electionTimeout: int=150;
+                  heartBeatTimeout: int=180;
+                  appendEntriesTimeout: int=150
+  ): T =
   var
     peers: RaftNodePeers
 

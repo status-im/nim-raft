@@ -19,7 +19,7 @@ proc RaftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType,
     for peer in node.peers:
       if peer.hasVoted:
         cnt.inc
-    if cnt >= (node.peers.len div 2 + 1):
+    if cnt >= (node.peers.len div 2 + node.peers.len mod 2):
       result = true
 
 proc RaftNodeHandleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessageAppendEntries): RaftMessageAppendEntriesResponse[SmStateType] =
@@ -40,11 +40,11 @@ proc RaftNodeHandleRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCom
   withRLock(node.raftStateMutex):
     result = RaftMessageRequestVoteResponse(msgId: msg.msgId, senderId: node.id, receiverId: msg.senderId, granted: false)
     if node.state != rnsCandidate and node.state != rnsStopped and msg.senderTerm > node.currentTerm and node.votedFor == DefaultUUID:
-      # if msg.lastLogIndex >= RaftNodeLogIndexGet(node) and msg.lastLogTerm >= RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term:
-      asyncSpawn cancelAndWait(node.electionTimeoutTimer)
-      node.votedFor = msg.senderId
-      result.granted = true
-      RaftNodeScheduleElectionTimeout(node)
+      if msg.lastLogIndex >= RaftNodeLogIndexGet(node) and msg.lastLogTerm >= RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term:
+        asyncSpawn cancelAndWait(node.electionTimeoutTimer)
+        node.votedFor = msg.senderId
+        result.granted = true
+        RaftNodeScheduleElectionTimeout(node)
 
 proc RaftNodeAbortElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   withRLock(node.raftStateMutex):

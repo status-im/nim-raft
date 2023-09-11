@@ -15,6 +15,7 @@ def writeFifo(data):
 def readPipe():
     with open(readFIFO, "r") as fifo:
             data = fifo.read()
+            # writeFifo(data)
             if len(data) == 0:
                 pass
                 # print("Writer closed")
@@ -54,6 +55,8 @@ if __name__ == "__main__":
     except OSError as oe: 
         if oe.errno != errno.EEXIST:
             raise
+    
+    readPipe()
     
     asyncio.run(main())
                 

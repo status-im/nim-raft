@@ -3,6 +3,6 @@
 x=''
 while [ t ];
 do
-	$(`x < RAFTNODESENDMSGRESPPIPE`);
+	$(`$x < RAFTNODESENDMSGRESPPIPE`);
   echo "$($x)" > RAFTNODERECEIVEMSGPIPE;
 done
