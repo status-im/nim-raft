@@ -6,6 +6,8 @@ import msgpack4nim
 import strutils
 import std/strformat
 import httpclient
+import os
+import std/threadpool
 
 type
   RaftPeerConf* = object
@@ -26,7 +28,7 @@ proc loadConfig(): RaftPeersConfContainer =
     conf.add(RaftPeerConf(id: parseUUID(n["id"].getStr), host: n["host"].getStr, port: n["port"].getInt))
   result = conf
 
-proc RaftPipesRead(node: BasicRaftNode, port: int) {.async.}=
+proc RaftPipesRead(node: BasicRaftNode, port: int) =
   var
     fifoRead = fmt"RAFTNODERECEIVEMSGPIPE{port}"
     fifoWrite = fmt"RAFTNODESENDMSGRESPPIPE{port}"
@@ -39,8 +41,10 @@ proc RaftPipesRead(node: BasicRaftNode, port: int) {.async.}=
 
   ss.unpack(xx) #and here too
 
+  debug "reqqqq: ", req=repr(xx)
+
   var
-    r: RaftMessageResponseBase = await RaftNodeMessageDeliver(node, xx)
+    r = waitFor RaftNodeMessageDeliver(node, RaftMessageRequestVote(xx))
     rs = MsgStream.init()
 
   rs.pack(r)
@@ -64,9 +68,6 @@ proc TestRaftMessageSendCallbackCreate(conf: RaftPeersConfContainer, node: Basic
     debug "req: ", req=fmt"http://{host}:{port}", data=s.data
     var
       resp = client.post(fmt"http://{host}:{port}", s.data)
-
-    await RaftPipesRead(node, port)
-
     echo resp.status
 
     var
@@ -88,7 +89,7 @@ proc main() {.async.} =
     nodesIds.add(c.id)
 
   var
-    nodeId = parseUUID("0edc0976-4f38-11ee-b1ad-5b3b0f690e65")
+    nodeId = parseUUID(paramStr(1))
     peersIds = nodesIds
     port: int
     idx = peersIds.find(nodeId)
@@ -97,6 +98,7 @@ proc main() {.async.} =
 
   node = BasicRaftNode.new(nodeId, peersIds, TestRaftMessageSendCallbackCreate(conf, node, port))
   RaftNodeStart(node)
+  spawn RaftPipesRead(node, port)
 
 if isMainModule:
   waitFor main()

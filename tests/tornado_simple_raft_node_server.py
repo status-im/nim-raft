@@ -9,13 +9,14 @@ writeFIFO = 'RAFTNODERECEIVEMSGPIPE'
 readFIFO = 'RAFTNODESENDMSGRESPPIPE'
 
 def writeFifo(data):
-    with open(writeFIFO, "a") as fw:
+    with open(writeFIFO, "ab") as fw:
         fw.write(data)
         
 def readPipe():
-    with open(readFIFO, "r") as fifo:
+    while True:
+        with open(readFIFO, "rb") as fifo:
             data = fifo.read()
-            # writeFifo(data)
+                # writeFifo(data)
             if len(data) == 0:
                 pass
                 # print("Writer closed")
@@ -26,8 +27,11 @@ def readPipe():
 class MainHandler(tornado.web.RequestHandler):
     def post(self):
         s = self.request.body
+        print(s)
         writeFifo(s)
-        self.write(readPipe())
+        r = readPipe()
+        print(r)
+        self.write(r)
 
     def get(self):
         self.write("Hello, world")
