@@ -5,8 +5,8 @@ import sys
 import errno
 import msgpack
 
-writeFIFO = '/home/raych/prg/nim-raft/RAFTNODERECEIVEMSGPIPE'
-readFIFO = '/home/raych/prg/nim-raft/RAFTNODESENDMSGRESPPIPE'
+writeFIFO = 'RAFTNODERECEIVEMSGPIPE'
+readFIFO = 'RAFTNODESENDMSGRESPPIPE'
 
 def writeFifo(data):
     with open(writeFIFO, "a") as fw:
@@ -25,7 +25,7 @@ def readPipe():
 
 class MainHandler(tornado.web.RequestHandler):
     def post(self):
-        s = self.request.body.decode("utf-8")
+        s = self.request.body
         writeFifo(s)
         self.write(readPipe())
 

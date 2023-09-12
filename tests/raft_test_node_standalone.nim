@@ -15,19 +15,38 @@ type
 
   RaftPeersConfContainer* = seq[RaftPeerConf]
 
-var
-  conf: RaftPeersConfContainer
+proc loadConfig(): RaftPeersConfContainer =
+  var
+    conf: RaftPeersConfContainer
 
-proc loadConfig() =
   let jsonFile = "raft_node_config.json"
   # read and parse file
   let jsConf = parseFile(jsonFile)
   for n in jsConf["raftPeers"]:
-    conf.add(RaftPeerConf(id: parseUUID(n["id"].astToStr), host: n["host"].astToStr, port: parseInt(n["port"].astToStr)))
-    debug "Conf", conf=conf
-  info "Conf", config=repr(conf)
+    conf.add(RaftPeerConf(id: parseUUID(n["id"].getStr), host: n["host"].getStr, port: n["port"].getInt))
+  result = conf
 
-proc TestRaftMessageSendCallbackCreate(): RaftMessageSendCallback =
+proc RaftPipesRead(node: BasicRaftNode, port: int) {.async.}=
+  var
+    fifoRead = fmt"RAFTNODERECEIVEMSGPIPE{port}"
+    fifoWrite = fmt"RAFTNODESENDMSGRESPPIPE{port}"
+    frFD = open(fifoRead, fmRead)
+    fwFD = open(fifoWrite, fmAppend)
+
+  var
+    ss = MsgStream.init(frFD.readAll)
+    xx: RaftMessageBase
+
+  ss.unpack(xx) #and here too
+
+  var
+    r: RaftMessageResponseBase = await RaftNodeMessageDeliver(node, xx)
+    rs = MsgStream.init()
+
+  rs.pack(r)
+  fwFD.write(rs.data)
+
+proc TestRaftMessageSendCallbackCreate(conf: RaftPeersConfContainer, node: BasicRaftNode, port: int): RaftMessageSendCallback =
   proc (msg: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.} =
     var
       host: string
@@ -42,8 +61,11 @@ proc TestRaftMessageSendCallbackCreate(): RaftMessageSendCallback =
 
     s.pack(msg) #here the magic happened
 
+    debug "req: ", req=fmt"http://{host}:{port}", data=s.data
     var
       resp = client.post(fmt"http://{host}:{port}", s.data)
+
+    await RaftPipesRead(node, port)
 
     echo resp.status
 
@@ -54,8 +76,9 @@ proc TestRaftMessageSendCallbackCreate(): RaftMessageSendCallback =
     ss.unpack(xx) #and here too
     result = xx
 
-if isMainModule:
-  loadConfig()
+proc main() {.async.} =
+  var conf = loadConfig()
+
   var
     nodesIds: seq[UUID]
     node: BasicRaftNode
@@ -65,9 +88,16 @@ if isMainModule:
     nodesIds.add(c.id)
 
   var
-    nodeId = parseUUID("f9695ea4-4f37-11ee-8e75-8ff5a48faa42")
+    nodeId = parseUUID("0edc0976-4f38-11ee-b1ad-5b3b0f690e65")
     peersIds = nodesIds
+    port: int
+    idx = peersIds.find(nodeId)
+  port = conf[idx].port
+  peersIds.del(idx)
 
-  peersIds.del(peersIds.find(nodeId))
+  node = BasicRaftNode.new(nodeId, peersIds, TestRaftMessageSendCallbackCreate(conf, node, port))
+  RaftNodeStart(node)
 
-  node = BasicRaftNode.new(nodeId, peersIds, TestRaftMessageSendCallbackCreate())
+if isMainModule:
+  waitFor main()
+  runForever()
