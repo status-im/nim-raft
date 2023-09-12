@@ -11,4 +11,4 @@ import
   raft/raft_api
 
 export
-  raft_api, types, protocol
+  raft_api

@@ -6,3 +6,12 @@
 # at your option.
 # This file may not be copied, modified, or distributed except according to
 # those terms.
+
+import ../misc/test_macro
+
+{. warning[UnusedImport]:off .}
+
+cliBuilder:
+  import  ./test_basic_timers,
+          ./test_basic_state_machine,
+          ./test_basic_cluster
