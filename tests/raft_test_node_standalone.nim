@@ -37,18 +37,20 @@ proc TestRaftMessageSendCallbackCreate(): RaftMessageSendCallback =
         host = c.host
         port = c.port
     var
-      client = newAsyncHttpClient()
+      client = newHttpClient()
       s = MsgStream.init() # besides MsgStream, you can also use Nim StringStream or FileStream
 
     s.pack(msg) #here the magic happened
 
     var
-      resp = await client.post(fmt"http://host:port", s.data)
+      resp = client.post(fmt"http://{host}:{port}", s.data)
 
     echo resp.status
+
     var
       ss = MsgStream.init(resp.body)
       xx: RaftMessageResponseBase
+
     ss.unpack(xx) #and here too
     result = xx
 

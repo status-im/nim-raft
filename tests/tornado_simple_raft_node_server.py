@@ -48,6 +48,8 @@ async def main():
 
 if __name__ == "__main__":
     try:
+        readFIFO = readFIFO + sys.argv[1]
+        writeFIFO = writeFIFO + sys.argv[1]
         os.mkfifo(readFIFO)
         os.mkfifo(writeFIFO)
     except OSError as oe: 
