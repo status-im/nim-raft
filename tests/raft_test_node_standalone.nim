@@ -50,7 +50,7 @@ proc RaftPipesRead(node: BasicRaftNode, port: int) =
   rs.pack(r)
   fwFD.write(rs.data)
 
-proc TestRaftMessageSendCallbackCreate(conf: RaftPeersConfContainer, node: BasicRaftNode, port: int): RaftMessageSendCallback =
+proc TestRaftMessageSendCallbackCreate(conf: RaftPeersConfContainer): RaftMessageSendCallback =
   proc (msg: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.} =
     var
       host: string
@@ -96,7 +96,7 @@ proc main() {.async.} =
   port = conf[idx].port
   peersIds.del(idx)
 
-  node = BasicRaftNode.new(nodeId, peersIds, TestRaftMessageSendCallbackCreate(conf, node, port))
+  node = BasicRaftNode.new(nodeId, peersIds, TestRaftMessageSendCallbackCreate(conf))
   RaftNodeStart(node)
   spawn RaftPipesRead(node, port)
 
