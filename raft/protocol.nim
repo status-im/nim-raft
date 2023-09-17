@@ -13,29 +13,30 @@
 import types
 
 type
-  RaftMessageRespoonseError* = enum           # Raft message response errors
-    rmreSuccess = 0,
-    rmreFail = 1
+  RaftMessage*[SmCommandType, SmStateType] = ref object of RaftMessageBase[SmCommandType, SmStateType]
+    senderTerm*: RaftNodeTerm                                     # Sender Raft Node Term
+    case op*: RaftMessageOps
+    of rmoRequestVote:
+      lastLogTerm*: RaftNodeTerm
+      lastLogIndex*: RaftLogIndex
+    of rmoAppendLogEntry:
+      prevLogIndex*: RaftLogIndex
+      prevLogTerm*: RaftNodeTerm
+      commitIndex*: RaftLogIndex
+      logEntries*: Option[seq[RaftNodeLogEntry[SmCommandType]]]   # Optional log entry(ies). Will be empty for a Heart-Beat
+    of rmoInstallSnapshot:
+      discard
 
-  RaftMessageRequestVote* = ref object of RaftMessageBase
-    lastLogTerm*: RaftNodeTerm
-    lastLogIndex*: RaftLogIndex
-    senderTerm*: RaftNodeTerm               # Sender Raft Node Term
-
-  RaftMessageRequestVoteResponse* = ref object of RaftMessageResponseBase
-    granted*: bool                          # Is vote granted by the Raft node, from we requested vote?
-
-  RaftMessageAppendEntries*[SmCommandType] = ref object of RaftMessageBase
-    prevLogIndex*: RaftLogIndex
-    prevLogTerm*: RaftNodeTerm
-    commitIndex*: RaftLogIndex
-    logEntries*: Option[seq[RaftNodeLogEntry[SmCommandType]]]         # Optional log entry(ies). Will be empty for a Heart-Beat
-    senderTerm*: RaftNodeTerm                                         # Sender Raft Node Term
-
-  RaftMessageAppendEntriesResponse*[SmStateType] = ref object of RaftMessageResponseBase
-    success*: bool
-    lastLogIndex*: RaftLogIndex
-    state*: Option[SmStateType]                                       # Optional Raft Abstract State Machine State
+  RaftMessageResponse*[SmCommandType, SmStateType] = ref object of RaftMessageResponseBase[SmCommandType, SmStateType]
+    case op*: RaftMessageOps
+    of rmoRequestVote:
+      granted*: bool                 # Is vote granted by the Raft node, from we requested vote?
+    of rmoAppendLogEntry:
+      success*: bool
+      lastLogIndex*: RaftLogIndex
+      state*: Option[SmStateType]    # Optional Raft Abstract State Machine State
+    of rmoInstallSnapshot:
+      discard
 
   # Raft Node Client Request/Response definitions
   RaftNodeClientRequestOps* = enum

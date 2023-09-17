@@ -9,7 +9,7 @@
 
 import chronos
 
-template awaitWithTimeout[T](operation: Future[T],
+template awaitWithTimeout*[T](operation: Future[T],
                               deadline: Future[void],
                               onTimeout: untyped): T =
   let f = operation
@@ -23,12 +23,12 @@ template awaitWithTimeout[T](operation: Future[T],
   else:
     f.read
 
-template awaitWithTimeout[T](operation: Future[T],
+template awaitWithTimeout*[T](operation: Future[T],
                               timeout: Duration,
                               onTimeout: untyped): T =
   awaitWithTimeout(operation, sleepAsync(timeout), onTimeout)
 
-template awaitWithTimeout(operation: Future[void],
+template awaitWithTimeout*(operation: Future[void],
                            deadline: Future[void],
                            onTimeout: untyped) =
   let f = operation
@@ -40,7 +40,7 @@ template awaitWithTimeout(operation: Future[void],
     await cancelAndWait(f)
     onTimeout
 
-template awaitWithTimeout(operation: Future[void],
+template awaitWithTimeout*(operation: Future[void],
                            timeout: Duration,
                            onTimeout: untyped) =
   awaitWithTimeout(operation, sleepAsync(timeout), onTimeout)

@@ -84,17 +84,16 @@ type
     rmoInstallSnapshot = 2                 # For dynamic adding of new Raft Nodes to speed up the new nodes
                                            # when they have to catch-up to the currently replicated log.
 
-  RaftMessageBase* = ref object of RootObj # Base Type for Raft Protocol Messages.
-    op*: RaftMessageOps                    # Message op. Used to distinguish between different message types
-                                           # and cast the base class to the correct derived class where necessary.
+  RaftMessageBase*[SmCommandType, SmStateType] = ref object of RootObj # Base Type for Raft Protocol Messages.
     msgId*: RaftMessageId                  # Message UUID.
     senderId*: RaftNodeId                  # Sender Raft Node ID.
     receiverId*: RaftNodeId                # Receiver Raft Node ID.
 
-  RaftMessageResponseBase* = ref object of RaftMessageBase
+  RaftMessageResponseBase*[SmCommandType, SmStateType] = ref object of RaftMessageBase[SmCommandType, SmStateType]
 
-  RaftMessageSendCallback* = proc (raftMessage: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.}  # Callback for Sending Raft Node Messages
-                                                                                                                     # out of this Raft Node.
+  # Callback for Sending Raft Node Messages out of this Raft Node.
+  RaftMessageSendCallback*[SmCommandType, SmStateType] = proc (raftMessage: RaftMessageBase[SmCommandType, SmStateType]):
+    Future[RaftMessageResponseBase[SmCommandType, SmStateType]] {.async, gcsafe.}
 
   # For later use when adding/removing new nodes (dynamic configuration chganges)
   RaftNodeConfiguration* = ref object
@@ -123,11 +122,12 @@ type
   # Raft Node Object type
   RaftNode*[SmCommandType, SmStateType] = ref object
     # Timers
-    votesFuts*: seq[Future[RaftMessageResponseBase]]
+    votesFuts*: seq[Future[RaftMessageResponseBase[SmCommandType, SmStateType]]]
 
     electionTimeout*: int
     heartBeatTimeout*: int
     appendEntriesTimeout*: int
+    votingTimeout*: int
 
     heartBeatTimer*: Future[void]
     electionTimeoutTimer*: Future[void]
@@ -137,7 +137,7 @@ type
     raftStateMutex*: RLock
 
     # Misc
-    msgSendCallback*: RaftMessageSendCallback
+    msgSendCallback*: RaftMessageSendCallback[SmCommandType, SmStateType]
     persistentStorage: RaftNodePersistentStorage[SmCommandType, SmStateType]
 
     # Persistent state

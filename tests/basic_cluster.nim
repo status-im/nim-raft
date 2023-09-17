@@ -20,8 +20,8 @@ type
   BasicRaftCluster* = ref object
     nodes*: Table[RaftNodeId, BasicRaftNode]
 
-proc BasicRaftClusterRaftMessageSendCallbackCreate(cluster: BasicRaftCluster): RaftMessageSendCallback =
-  proc (msg: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.} =
+proc BasicRaftClusterRaftMessageSendCallbackCreate[SmCommandType, SmStateType](cluster: BasicRaftCluster): RaftMessageSendCallback[SmCommandType, SmStateType] =
+  proc (msg: RaftMessageBase[SmCommandType, SmStateType]): Future[RaftMessageResponseBase[SmCommandType, SmStateType]] {.async, gcsafe.} =
     result = await cluster.nodes[msg.receiverId].RaftNodeMessageDeliver(msg)
 
 proc BasicRaftClusterStart*(cluster: BasicRaftCluster) =
@@ -53,5 +53,5 @@ proc BasicRaftClusterInit*(nodesIds: seq[RaftNodeId]): BasicRaftCluster =
       peersIds = nodesIds
 
     peersIds.del(peersIds.find(nodeId))
-    result.nodes[nodeId] = BasicRaftNode.new(nodeId, peersIds, BasicRaftClusterRaftMessageSendCallbackCreate(result), electionTimeout=150, heartBeatTimeout=150)
+    result.nodes[nodeId] = BasicRaftNode.new(nodeId, peersIds, BasicRaftClusterRaftMessageSendCallbackCreate[SmCommand, SmState](result), electionTimeout=150, heartBeatTimeout=150)
 

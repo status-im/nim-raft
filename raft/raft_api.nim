@@ -31,8 +31,9 @@ proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateTyp
                   # persistentStorage: RaftNodePersistentStorage,
                   msgSendCallback: RaftMessageSendCallback;
                   electionTimeout: int=150;
-                  heartBeatTimeout: int=180;
-                  appendEntriesTimeout: int=150
+                  heartBeatTimeout: int=150;
+                  appendEntriesTimeout: int=50;
+                  votingTimeout: int=50
   ): T =
   var
     peers: RaftNodePeers
@@ -43,7 +44,8 @@ proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateTyp
   result = T(
     id: id, state: rnsFollower, currentTerm: 0, peers: peers, commitIndex: 0, lastApplied: 0,
     msgSendCallback: msgSendCallback, votedFor: DefaultUUID, currentLeaderId: DefaultUUID,
-    electionTimeout: electionTimeout, heartBeatTimeout: heartBeatTimeout, appendEntriesTimeout: appendEntriesTimeout
+    electionTimeout: electionTimeout, heartBeatTimeout: heartBeatTimeout, appendEntriesTimeout: appendEntriesTimeout,
+    votingTimeout: votingTimeout
   )
 
   RaftNodeSmInit(result.stateMachine)
@@ -75,20 +77,24 @@ func RaftNodeIsLeader*[SmCommandType, SmStateType](node: RaftNode[SmCommandType,
     result = node.state == rnsLeader
 
 # Deliver Raft Message to the Raft Node and dispatch it
-proc RaftNodeMessageDeliver*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], raftMessage: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.} =
-    case raftMessage.op
-    of rmoRequestVote:    # Dispatch different Raft Message types based on the operation code
-      result = RaftNodeHandleRequestVote(node, RaftMessageRequestVote(raftMessage))
+proc RaftNodeMessageDeliver*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], raftMessage: RaftMessageBase[SmCommandType, SmStateType]):
+      Future[RaftMessageResponseBase[SmCommandType, SmStateType]] {.async, gcsafe.} =
+    var
+      rm = RaftMessage[SmCommandType, SmStateType](raftMessage)
+
+    case rm.op          # Dispatch different Raft Message types based on the operation code
+    of rmoRequestVote:
+      result = RaftNodeHandleRequestVote(node, rm)
     of rmoAppendLogEntry:
-      var appendMsg = RaftMessageAppendEntries[SmCommandType](raftMessage)
-      if appendMsg.logEntries.isSome:
-        result = RaftNodeHandleAppendEntries(node, appendMsg)
+      if rm.logEntries.isSome:
+        result = RaftNodeHandleAppendEntries(node, rm)
       else:
-        result = RaftNodeHandleHeartBeat(node, appendMsg)
+        result = RaftNodeHandleHeartBeat(node, rm)
     else: discard
 
 # Process Raft Node Client Requests
-proc RaftNodeServeClientRequest*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], req: RaftNodeClientRequest[SmCommandType]): Future[RaftNodeClientResponse[SmStateType]] {.async, gcsafe.} =
+proc RaftNodeServeClientRequest*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], req: RaftNodeClientRequest[SmCommandType]):
+    Future[RaftNodeClientResponse[SmStateType]] {.async, gcsafe.} =
   case req.op
     of rncroExecSmCommand:
       # TODO: implemenmt command handling
@@ -122,19 +128,18 @@ template RaftTimerCreate(timerInterval: int, timerCallback: RaftTimerCallback): 
 
 # Timers scheduling stuff etc.
 proc RaftNodeScheduleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  node.heartBeatTimer = RaftTimerCreate(node.heartBeatTimeout, proc() = asyncSpawn RaftNodeSendHeartBeat(node))
+  node.heartBeatTimer = RaftTimerCreate(node.heartBeatTimeout, proc() = RaftNodeSendHeartBeat(node))
 
-proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
+proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   debug "Raft Node sending Heart-Beat to peers", node_id=node.id
   for raftPeer in node.peers:
-    let msgHrtBt = RaftMessageAppendEntries[SmCommandType](
+    let msgHrtBt = RaftMessage[SmCommandType, SmStateType](
       op: rmoAppendLogEntry, senderId: node.id, receiverId: raftPeer.id,
       senderTerm: RaftNodeTermGet(node), commitIndex: node.commitIndex,
       prevLogIndex: RaftNodeLogIndexGet(node) - 1, prevLogTerm: if RaftNodeLogIndexGet(node) > 0: RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node) - 1).term else: 0
     )
-    let r = await node.msgSendCallback(msgHrtBt)
+    let r = node.msgSendCallback(msgHrtBt)
     discard r
-    debug "Sent Heart-Beat", sender=node.id, to=raftPeer.id
   RaftNodeScheduleHeartBeat(node)
 
 proc RaftNodeScheduleElectionTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =

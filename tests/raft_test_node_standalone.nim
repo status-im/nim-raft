@@ -28,7 +28,7 @@ proc loadConfig(): RaftPeersConfContainer =
     conf.add(RaftPeerConf(id: parseUUID(n["id"].getStr), host: n["host"].getStr, port: n["port"].getInt))
   result = conf
 
-proc RaftPipesRead(node: BasicRaftNode, port: int) =
+proc RaftPipesRead[SmCommandType, SmStateType](node: BasicRaftNode, port: int) =
   var
     fifoRead = fmt"RAFTNODERECEIVEMSGPIPE{port}"
     fifoWrite = fmt"RAFTNODESENDMSGRESPPIPE{port}"
@@ -37,47 +37,45 @@ proc RaftPipesRead(node: BasicRaftNode, port: int) =
 
   var
     ss = MsgStream.init(frFD.readAll)
-    xx: RaftMessageBase
+    xx: RaftMessage[SmCommandType, SmStateType]
 
   ss.unpack(xx) #and here too
 
-  debug "reqqqq: ", req=repr(xx)
+  debug "Received Req: ", req=repr(xx)
 
   var
-    r = waitFor RaftNodeMessageDeliver(node, RaftMessageRequestVote(xx))
+    r = waitFor RaftNodeMessageDeliver(node, xx)
+    resp = RaftMessageResponse[SmCommandType, SmStateType](r)
     rs = MsgStream.init()
 
-  rs.pack(r)
+  rs.pack(resp)
   fwFD.write(rs.data)
 
-proc TestRaftMessageSendCallbackCreate(conf: RaftPeersConfContainer): RaftMessageSendCallback =
-  proc (msg: RaftMessageBase): Future[RaftMessageResponseBase] {.async, gcsafe.} =
+proc TestRaftMessageSendCallbackCreate[SmCommandType, SmStateType](conf: RaftPeersConfContainer): RaftMessageSendCallback[SmCommandType, SmStateType] =
+  proc (msg: RaftMessageBase[SmCommandType, SmStateType]): Future[RaftMessageResponseBase[SmCommandType, SmStateType]] {.async, gcsafe.} =
     var
       host: string
       port: int
+      resp: Response
+      xx: RaftMessageResponse[SmCommandType, SmStateType]
+      client = newHttpClient(timeout=50)
+      m = RaftMessage[SmCommandType, SmStateType](msg)
+      s = MsgStream.init() # besides MsgStream, you can also use Nim StringStream or FileStream
+
     for c in conf:
       if c.id == msg.receiverId:
         host = c.host
         port = c.port
-    var
-      client = newHttpClient()
-      s = MsgStream.init() # besides MsgStream, you can also use Nim StringStream or FileStream
 
-    s.pack(msg) #here the magic happened
+    s.pack(m) #here the magic happened
+    debug "Sending Req: ", req=fmt"http://{host}:{port}", data=s.data
+    resp = client.post(fmt"http://{host}:{port}", s.data)
 
-    debug "req: ", req=fmt"http://{host}:{port}", data=s.data
-    var
-      resp = client.post(fmt"http://{host}:{port}", s.data)
-    echo resp.status
-
-    var
-      ss = MsgStream.init(resp.body)
-      xx: RaftMessageResponseBase
-
-    ss.unpack(xx) #and here too
+    s = MsgStream.init(resp.body)
+    s.unpack(xx) #and here too
     result = xx
 
-proc main() {.async.} =
+proc main() =
   var conf = loadConfig()
 
   var
@@ -93,13 +91,14 @@ proc main() {.async.} =
     peersIds = nodesIds
     port: int
     idx = peersIds.find(nodeId)
+
   port = conf[idx].port
   peersIds.del(idx)
+  node = BasicRaftNode.new(nodeId, peersIds, TestRaftMessageSendCallbackCreate[SmCommand, SmState](conf))
 
-  node = BasicRaftNode.new(nodeId, peersIds, TestRaftMessageSendCallbackCreate(conf))
   RaftNodeStart(node)
-  spawn RaftPipesRead(node, port)
+  spawn RaftPipesRead[SmCommand, SmState](node, port)
+  runForever()
 
 if isMainModule:
-  waitFor main()
-  runForever()
+  main()
