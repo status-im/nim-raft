@@ -122,7 +122,7 @@ proc RaftNodeSmApply[SmCommandType, SmStateType](stateMachine: RaftNodeStateMach
     RaftSmApply(stateMachine, command)
 
 # Private Abstract Timer creation
-template RaftTimerCreate(timerInterval: int, timerCallback: RaftTimerCallback): Future[void] =
+template RaftTimerCreate*(timerInterval: int, timerCallback: RaftTimerCallback): Future[void] =
   mixin RaftTimerCreateCustomImpl
   RaftTimerCreateCustomImpl(timerInterval, timerCallback)
 

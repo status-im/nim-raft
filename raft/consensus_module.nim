@@ -63,7 +63,7 @@ proc RaftNodeAbortElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
         waitFor cancelAndWait(fut)
 
 proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
-  mixin RaftNodeScheduleElectionTimeout
+  mixin RaftNodeScheduleElectionTimeout, RaftTimerCreate
   RaftNodeScheduleElectionTimeout(node)
 
   withRLock(node.raftStateMutex):
@@ -88,7 +88,7 @@ proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
     # Process votes (if any)
     for voteFut in node.votesFuts:
       try:
-        await voteFut or sleepAsync(milliseconds(node.votingTimeout))
+        await voteFut or RaftTimerCreate(node.votingTimeout, proc()=discard)
         if not voteFut.finished:
           await cancelAndWait(voteFut)
         else:
