@@ -27,6 +27,9 @@ proc RaftNodeHandleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmComma
   debug "Received heart-beat", node_id=node.id, sender_id=msg.sender_id, node_current_term=node.currentTerm, sender_term=msg.senderTerm
   result = RaftMessageResponse[SmCommandType, SmStateType](op: rmoAppendLogEntry, senderId: node.id, receiverId: msg.senderId, msgId: msg.msgId, success: false)
   withRLock(node.raftStateMutex):
+    if node.state == rnsStopped:
+      return
+
     if msg.senderTerm >= node.currentTerm:
       RaftNodeCancelAllTimers(node)
       if node.state == rnsCandidate:
@@ -39,12 +42,16 @@ proc RaftNodeHandleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmComma
 
 proc RaftNodeHandleRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessage[SmCommandType, SmStateType]):
     RaftMessageResponse[SmCommandType, SmStateType] =
+  result = RaftMessageResponse[SmCommandType, SmStateType](op: rmoRequestVote, msgId: msg.msgId, senderId: node.id, receiverId: msg.senderId, granted: false)
   withRLock(node.raftStateMutex):
-    result = RaftMessageResponse[SmCommandType, SmStateType](op: rmoRequestVote, msgId: msg.msgId, senderId: node.id, receiverId: msg.senderId, granted: false)
-    if node.state != rnsCandidate and node.state != rnsStopped and msg.senderTerm > node.currentTerm and node.votedFor == DefaultUUID:
-      if msg.lastLogTerm >= RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term or
+    if node.state == rnsStopped:
+      return
+
+    if msg.senderTerm > node.currentTerm and node.votedFor == DefaultUUID:
+      if msg.lastLogTerm > RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term or
         (msg.lastLogTerm == RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term and msg.lastLogIndex >= RaftNodeLogIndexGet(node)):
-        asyncSpawn cancelAndWait(node.electionTimeoutTimer)
+        if node.electionTimeoutTimer != nil:
+          asyncSpawn cancelAndWait(node.electionTimeoutTimer)
         node.votedFor = msg.senderId
         result.granted = true
         RaftNodeScheduleElectionTimeout(node)
@@ -52,16 +59,16 @@ proc RaftNodeHandleRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCom
 proc RaftNodeAbortElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   withRLock(node.raftStateMutex):
     node.state = rnsFollower
-  # for fut in node.votesFuts:
-  #     waitFor cancelAndWait(fut)
+    for fut in node.votesFuts:
+        waitFor cancelAndWait(fut)
 
 proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
-  while node.votesFuts.len > 0:
-    discard node.votesFuts.pop
   mixin RaftNodeScheduleElectionTimeout
   RaftNodeScheduleElectionTimeout(node)
 
   withRLock(node.raftStateMutex):
+    while node.votesFuts.len > 0:
+     discard node.votesFuts.pop
     node.currentTerm.inc
     node.state = rnsCandidate
     node.votedFor = node.id
@@ -77,22 +84,23 @@ proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
       )
     )
 
-  # Process votes (if any)
-  for voteFut in node.votesFuts:
-    try:
-      await voteFut or sleepAsync(milliseconds(node.votingTimeout))
-      if not voteFut.finished:
-        await cancelAndWait(voteFut)
-      else:
-        if not voteFut.cancelled:
-          let respVote = RaftMessageResponse[SmCommandType, SmStateType](voteFut.read)
-          debug "Received vote", node_id=node.id, sender_id=respVote.senderId, granted=respVote.granted
+  withRLock(node.raftStateMutex):
+    # Process votes (if any)
+    for voteFut in node.votesFuts:
+      try:
+        await voteFut or sleepAsync(milliseconds(node.votingTimeout))
+        if not voteFut.finished:
+          await cancelAndWait(voteFut)
+        else:
+          if not voteFut.cancelled:
+            let respVote = RaftMessageResponse[SmCommandType, SmStateType](voteFut.read)
+            debug "Received vote", node_id=node.id, sender_id=respVote.senderId, granted=respVote.granted
 
-          for p in node.peers:
-            if p.id == respVote.senderId:
-              p.hasVoted = respVote.granted
-    except Exception as e:
-      discard
+            for p in node.peers:
+              if p.id == respVote.senderId:
+                p.hasVoted = respVote.granted
+      except Exception as e:
+        discard
 
   withRLock(node.raftStateMutex):
     if node.state == rnsCandidate:
