@@ -10,32 +10,34 @@
 import unittest2
 import basic_cluster
 
-proc basicClusterMain*() =
+proc basicClusterElectionMain*() =
   var
     cluster: BasicRaftCluster
     nodesIds = newSeq[RaftNodeId](5)
 
-  suite "Basic Raft Cluster Tests":
+  suite "Basic Raft Cluster Election Tests":
 
     test "Basic Raft Cluster Init (5 nodes)":
       for i in 0..4:
         nodesIds[i] = genUUID()
-
       cluster = BasicRaftClusterInit(nodesIds)
+      check cluster != nil
 
-    test "Generate Random Client SmCommands Queue":
-      discard
-
-    test "Start Basic Raft Cluster And wait it to converge 10s (Elect a Leader)":
+    test "Start Basic Raft Cluster and wait it to converge for a 2 seconds interval (Elect a Leader)":
       BasicRaftClusterStart(cluster)
-      let dur = seconds(10)
+      let dur = seconds(2)
       waitFor sleepAsync(dur)
+      let
+        leaderId = BasicRaftClusterGetLeaderId(cluster)
+      check leaderId != DefaultUUID
 
-    test "Simulate Basic Raft Cluster Client SmCommands Execution / Log Replication":
-      discard
-
-    test "Evaluate results":
-      discard
+    test "Check for leader every second for a 10 second interval":
+      let dur = seconds(1)
+      for i in 0..9:
+        waitFor sleepAsync(dur)
+        let
+          leaderId = BasicRaftClusterGetLeaderId(cluster)
+        check leaderId != DefaultUUID
 
 if isMainModule:
-  basicClusterMain()
+  basicClusterElectionMain()

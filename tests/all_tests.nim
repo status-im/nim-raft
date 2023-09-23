@@ -14,4 +14,4 @@ import ../misc/test_macro
 cliBuilder:
   import  ./test_basic_timers,
           ./test_basic_state_machine,
-          ./test_basic_cluster
+          ./test_basic_cluster_election
