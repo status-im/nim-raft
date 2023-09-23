@@ -33,7 +33,7 @@ proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateTyp
                   electionTimeout: int=150;
                   heartBeatTimeout: int=150;
                   appendEntriesTimeout: int=50;
-                  votingTimeout: int=50
+                  votingTimeout: int=20
   ): T =
   var
     peers: RaftNodePeers
@@ -128,9 +128,10 @@ template RaftTimerCreate*(timerInterval: int, timerCallback: RaftTimerCallback):
 
 # Timers scheduling stuff etc.
 proc RaftNodeScheduleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  node.heartBeatTimer = RaftTimerCreate(node.heartBeatTimeout, proc() = RaftNodeSendHeartBeat(node))
+  withRLock(node.raftStateMutex):
+    node.heartBeatTimer = RaftTimerCreate(node.heartBeatTimeout, proc() = asyncSpawn RaftNodeSendHeartBeat(node))
 
-proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
   debug "Raft Node sending Heart-Beat to peers", node_id=node.id
   for raftPeer in node.peers:
     let msgHrtBt = RaftMessage[SmCommandType, SmStateType](
@@ -138,24 +139,22 @@ proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommand
       senderTerm: RaftNodeTermGet(node), commitIndex: node.commitIndex,
       prevLogIndex: RaftNodeLogIndexGet(node) - 1, prevLogTerm: if RaftNodeLogIndexGet(node) > 0: RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node) - 1).term else: 0
     )
-    let r = node.msgSendCallback(msgHrtBt)
-    discard r
+    discard node.msgSendCallback(msgHrtBt)
   RaftNodeScheduleHeartBeat(node)
 
 proc RaftNodeScheduleElectionTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  node.electionTimeoutTimer = RaftTimerCreate(node.electionTimeout + rand(node.electionTimeout), proc =
-    asyncSpawn RaftNodeStartElection(node)
-  )
+  withRLock(node.raftStateMutex):
+    node.electionTimeoutTimer = RaftTimerCreate(node.electionTimeout + rand(node.electionTimeout), proc =
+      asyncSpawn RaftNodeStartElection(node)
+    )
 
 # Raft Node Control
-proc RaftNodeCancelAllTimers*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+proc RaftNodeCancelTimers*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   withRLock(node.raftStateMutex):
     if node.heartBeatTimer != nil:
       asyncSpawn cancelAndWait(node.heartBeatTimer)
     if node.electionTimeoutTimer != nil:
       asyncSpawn cancelAndWait(node.electionTimeoutTimer )
-    if node.appendEntriesTimer != nil:
-      asyncSpawn cancelAndWait(node.appendEntriesTimer)
 
 proc RaftNodeStop*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
   # Try to stop gracefully
@@ -164,10 +163,12 @@ proc RaftNodeStop*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmS
     if node.state == rnsCandidate:
       RaftNodeAbortElection(node)s
     node.state = rnsStopped
-  # Cancel pending timers (if any)
-  RaftNodeCancelAllTimers(node)
+    # Cancel pending timers (if any)
+    RaftNodeCancelTimers(node)
 
 proc RaftNodeStart*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  node.state = rnsFollower
-  debug "Start Raft Node", node_id=node.id, state=node.state
-  RaftNodeScheduleElectionTimeout(node)
+  randomize()
+  withRLock(node.raftStateMutex):
+    node.state = rnsFollower
+    debug "Start Raft Node", node_id=node.id, state=node.state
+    RaftNodeScheduleElectionTimeout(node)

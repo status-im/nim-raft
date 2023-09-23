@@ -19,7 +19,7 @@ proc RaftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType,
   for peer in node.peers:
     if peer.hasVoted:
       cnt.inc
-  if cnt >= (node.peers.len div 2 + 1):
+  if cnt >= (node.peers.len div 2 + node.peers.len mod 2):
     result = true
 
 proc RaftNodeHandleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessage[SmCommandType, SmStateType]):
@@ -31,7 +31,7 @@ proc RaftNodeHandleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmComma
       return
 
     if msg.senderTerm >= node.currentTerm:
-      RaftNodeCancelAllTimers(node)
+      RaftNodeCancelTimers(node)
       if node.state == rnsCandidate:
         RaftNodeAbortElection(node)
       result.success = true
@@ -53,6 +53,7 @@ proc RaftNodeHandleRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCom
         if node.electionTimeoutTimer != nil:
           asyncSpawn cancelAndWait(node.electionTimeoutTimer)
         node.votedFor = msg.senderId
+        node.currentLeaderId = DefaultUUID
         result.granted = true
         RaftNodeScheduleElectionTimeout(node)
 
@@ -108,7 +109,7 @@ proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
         await cancelAndWait(node.electionTimeoutTimer)
         debug "Raft Node transition to leader", node_id=node.id
         node.state = rnsLeader        # Transition to leader state and send Heart-Beat to establish this node as the cluster leader
-        RaftNodeSendHeartBeat(node)
+        asyncSpawn RaftNodeSendHeartBeat(node)
 
 proc RaftNodeHandleAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessage[SmCommandType, SmStateType]):
     RaftMessageResponse[SmCommandType, SmStateType] =

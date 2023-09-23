@@ -45,6 +45,7 @@ type
                                             # (initialized to 0, increases monotonically)
     hasVoted*: bool                         # Indicates if this peer have voted for this Raft Node During Election
     canVote*: bool                          # Indicates if this peer can vote
+    appendEntriesTimer*: Future[void]
 
   RaftNodePeers* = seq[RaftNodePeer]        # List of Raft Node Peers
 
@@ -131,7 +132,6 @@ type
 
     heartBeatTimer*: Future[void]
     electionTimeoutTimer*: Future[void]
-    appendEntriesTimer*: Future[void]
 
     # Mtx definition(s) go here
     raftStateMutex*: RLock
