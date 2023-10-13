@@ -44,7 +44,7 @@ proc basicRaftClusterClientRequest*(cluster: BasicRaftCluster, req: RaftNodeClie
     of rncroExecSmCommand:
       discard
 
-proc basicRaftClusterInit*(nodesIds: seq[RaftNodeId], electionTimeout=5, heartBeatTimeout=5): BasicRaftCluster =
+proc basicRaftClusterInit*(nodesIds: seq[RaftNodeId], electionTimeout=150, heartBeatTimeout=150): BasicRaftCluster =
   new(result)
   for nodeId in nodesIds:
     var

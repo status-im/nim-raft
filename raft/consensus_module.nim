@@ -136,8 +136,8 @@ proc raftNodeHandleAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmC
         raftNodeLogTruncate(node, msg.prevLogIndex)
         return
 
-    if msg.entries.len > 0:
-      for entry in msg.entries:
+    if msg.logEntries.isSome:
+      for entry in msg.logEntries.get:
         raftNodeLogAppend(node, entry)
 
     if msg.commitIndex > node.commitIndex:

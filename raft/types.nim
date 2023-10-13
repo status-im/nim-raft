@@ -37,7 +37,7 @@ type
   RaftNodeTerm* = int                       # Raft Node Term Type
   RaftLogIndex* = int                       # Raft Node Log Index Type
 
-  RaftNodePeer* = ref object                    # Raft Node Peer object
+  RaftNodePeer* = ref object                # Raft Node Peer object
     id*: RaftNodeId
     nextIndex*: RaftLogIndex                # For each peer Raft Node, index of the next log entry to send to that Node
                                             # (initialized to leader last log index + 1)
@@ -51,7 +51,7 @@ type
 
 
   # Raft Node Abstract State Machine type
-  RaftNodeStateMachine*[SmCommandType, SmStateType] = ref object      # Some opaque State Machine Impelementation to be used by the Raft Node
+  RaftNodeStateMachine*[SmCommandType, SmStateType] = ref object  # Some opaque State Machine Impelementation to be used by the Raft Node
                                                                   # providing at minimum operations for initialization, querying the current state
                                                                   # and RaftNodeLogEntry (SmCommandType) application
     state*: ref SmStateType
@@ -147,8 +147,8 @@ type
     currentTerm*: RaftNodeTerm               # Latest term this Raft Node has seen (initialized to 0 on first boot, increases monotonically)
     votedFor*: RaftNodeId                    # Candidate RaftNodeId that received vote in current term (or DefaultUUID if none),
                                              # also used to redirect Client Requests in case this Raft Node is not the leader
-    log*: RaftNodeLog[SmCommandType]          # This Raft Node Log
-    stateMachine*: RaftNodeStateMachine[SmCommandType, SmStateType]      # Not sure for now putting it here. I assume that persisting the State Machine's
+    log*: RaftNodeLog[SmCommandType]         # This Raft Node Log
+    stateMachine*: RaftNodeStateMachine[SmCommandType, SmStateType]     # Not sure for now putting it here. I assume that persisting the State Machine's
                                                                         # state is enough to consider it 'persisted'
     peers*: RaftNodePeers                    # This Raft Node Peers IDs. I am not sure if this must be persistent or volatile but making it persistent
                                              # makes sense for the moment

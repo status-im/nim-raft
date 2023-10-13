@@ -8,6 +8,7 @@
 # those terms.
 
 import types
+import chronicles
 
 # Private Log Ops
 proc raftNodeLogIndexGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): RaftLogIndex =
@@ -20,10 +21,11 @@ proc raftNodeLogEntryGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandTy
 proc raftNodeLogAppend*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], logEntry: RaftNodeLogEntry[SmCommandType]) =
   node.log.logData.add(logEntry)
 
-proc raftNodeLogTruncate*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], truncateIndex: uint64) =
-  node.log.logData.truncate(truncateIndex)
+proc raftNodeLogTruncate*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], truncateIndex: RaftLogIndex) =
+  debug "Truncating log to index: ", truncateIndex=truncateIndex, ld=repr(node.log.logData)
+  # node.log.logData = node.log.logData[:truncateIndex]
 
 proc raftNodeApplyLogEntry*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], logEntry: RaftNodeLogEntry[SmCommandType]) =
   mixin raftNodeSmApply
 
-  raftNodeSmApply(node.stateMachine, logEntry.command)
+  raftNodeSmApply(node.stateMachine, logEntry.data.get)

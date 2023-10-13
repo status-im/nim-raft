@@ -11,7 +11,7 @@ import chronos
 
 template awaitWithTimeout*[T](operation: Future[T],
                               deadline: Future[void],
-                              body: untyped): T =
+                              body: untyped) =
   let f {.inject.} = operation
   await f or deadline
   if not f.finished:

@@ -23,7 +23,7 @@ export
   chronicles
 
 # Forward declarations
-proc raftNodeSmInit[SmCommandType, SmStateType](stateMachine: var RaftNodeStateMachine[SmCommandType, SmStateType])
+proc raftNodeSmInit*[SmCommandType, SmStateType](stateMachine: var RaftNodeStateMachine[SmCommandType, SmStateType])
 
 # Raft Node Public API
 proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateType];
@@ -112,17 +112,15 @@ func raftNodeSmStateGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandTyp
   withRLock(node.raftStateMutex):
     node.stateMachine.state
 
-proc raftNodeSmInit[SmCommandType, SmStateType](stateMachine: var RaftNodeStateMachine[SmCommandType, SmStateType]) =
+proc raftNodeSmInit*[SmCommandType, SmStateType](stateMachine: var RaftNodeStateMachine[SmCommandType, SmStateType]) =
   mixin raftSmInit
 
-  withRLock(node.raftStateMutex):
-    raftSmInit(stateMachine)
+  raftSmInit(stateMachine)
 
-proc raftNodeSmApply[SmCommandType, SmStateType](stateMachine: RaftNodeStateMachine[SmCommandType, SmStateType], command: SmCommandType) =
+proc raftNodeSmApply*[SmCommandType, SmStateType](stateMachine: RaftNodeStateMachine[SmCommandType, SmStateType], command: SmCommandType) =
   mixin raftSmApply
 
-  withRLock(node.raftStateMutex):
-    raftSmApply(stateMachine, command)
+  raftSmApply(stateMachine, command)
 
 # Private Abstract Timer creation
 template raftTimerCreate*(timerInterval: int, timerCallback: RaftTimerCallback): Future[void] =
