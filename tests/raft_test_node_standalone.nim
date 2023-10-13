@@ -28,7 +28,7 @@ proc loadConfig(): RaftPeersConfContainer =
     conf.add(RaftPeerConf(id: parseUUID(n["id"].getStr), host: n["host"].getStr, port: n["port"].getInt))
   result = conf
 
-proc RaftPipesRead[SmCommandType, SmStateType](node: BasicRaftNode, port: int) =
+proc raftPipesRead[SmCommandType, SmStateType](node: BasicRaftNode, port: int) =
   var
     fifoRead = fmt"RAFTNODERECEIVEMSGPIPE{port}"
     fifoWrite = fmt"RAFTNODESENDMSGRESPPIPE{port}"
@@ -44,14 +44,14 @@ proc RaftPipesRead[SmCommandType, SmStateType](node: BasicRaftNode, port: int) =
   debug "Received Req: ", req=repr(xx)
 
   var
-    r = waitFor RaftNodeMessageDeliver(node, xx)
+    r = waitFor raftNodeMessageDeliver(node, xx)
     resp = RaftMessageResponse[SmCommandType, SmStateType](r)
     rs = MsgStream.init()
 
   rs.pack(resp)
   fwFD.write(rs.data)
 
-proc TestRaftMessageSendCallbackCreate[SmCommandType, SmStateType](conf: RaftPeersConfContainer): RaftMessageSendCallback[SmCommandType, SmStateType] =
+proc testRaftMessageSendCallbackCreate[SmCommandType, SmStateType](conf: RaftPeersConfContainer): RaftMessageSendCallback[SmCommandType, SmStateType] =
   proc (msg: RaftMessageBase[SmCommandType, SmStateType]): Future[RaftMessageResponseBase[SmCommandType, SmStateType]] {.async, gcsafe.} =
     var
       host: string
@@ -94,10 +94,10 @@ proc main() =
 
   port = conf[idx].port
   peersIds.del(idx)
-  node = BasicRaftNode.new(nodeId, peersIds, TestRaftMessageSendCallbackCreate[SmCommand, SmState](conf))
+  node = BasicRaftNode.new(nodeId, peersIds, testRaftMessageSendCallbackCreate[SmCommand, SmState](conf))
 
-  RaftNodeStart(node)
-  spawn RaftPipesRead[SmCommand, SmState](node, port)
+  raftNodeStart(node)
+  spawn raftPipesRead[SmCommand, SmState](node, port)
   runForever()
 
 if isMainModule:

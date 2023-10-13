@@ -124,6 +124,7 @@ type
   RaftNode*[SmCommandType, SmStateType] = ref object
     # Timers
     votesFuts*: seq[Future[RaftMessageResponseBase[SmCommandType, SmStateType]]]
+    replicateFuts*: seq[Future[RaftMessageResponseBase[SmCommandType, SmStateType]]]
 
     electionTimeout*: int
     heartBeatTimeout*: int

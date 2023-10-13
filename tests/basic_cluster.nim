@@ -19,37 +19,37 @@ type
   BasicRaftCluster* = ref object
     nodes*: Table[RaftNodeId, BasicRaftNode]
 
-proc BasicRaftClusterRaftMessageSendCallbackCreate[SmCommandType, SmStateType](cluster: BasicRaftCluster): RaftMessageSendCallback[SmCommandType, SmStateType] =
+proc basicRaftClusterRaftMessageSendCallbackCreate[SmCommandType, SmStateType](cluster: BasicRaftCluster): RaftMessageSendCallback[SmCommandType, SmStateType] =
   proc (msg: RaftMessageBase[SmCommandType, SmStateType]): Future[RaftMessageResponseBase[SmCommandType, SmStateType]] {.async, gcsafe.} =
-    result = await cluster.nodes[msg.receiverId].RaftNodeMessageDeliver(msg)
+    result = await cluster.nodes[msg.receiverId].raftNodeMessageDeliver(msg)
 
-proc BasicRaftClusterStart*(cluster: BasicRaftCluster) =
+proc basicRaftClusterStart*(cluster: BasicRaftCluster) =
   for id, node in cluster.nodes:
-    RaftNodeStart(node)
+    raftNodeStart(node)
 
-proc BasicRaftClusterGetLeaderId*(cluster: BasicRaftCluster): UUID =
+proc basicRaftClusterGetLeaderId*(cluster: BasicRaftCluster): UUID =
   result = DefaultUUID
   for id, node in cluster.nodes:
-    if RaftNodeIsLeader(node):
-      return RaftNodeIdGet(node)
+    if raftNodeIsLeader(node):
+      return raftNodeIdGet(node)
 
-proc BasicRaftClusterClientRequest*(cluster: BasicRaftCluster, req: RaftNodeClientRequest): Future[RaftNodeClientResponse] {.async.} =
+proc basicRaftClusterClientRequest*(cluster: BasicRaftCluster, req: RaftNodeClientRequest): Future[RaftNodeClientResponse] {.async.} =
   case req.op:
     of rncroRequestSmState:
       var
-        nodeId = cluster.nodesIds[BasicRaftClusterGetLeaderId(cluster)]
+        nodeId = cluster.nodesIds[basicRaftClusterGetLeaderId(cluster)]
 
-      result = await cluster.nodes[nodeId].RaftNodeServeClientRequest(req)
+      result = await cluster.nodes[nodeId].raftNodeServeClientRequest(req)
 
     of rncroExecSmCommand:
       discard
 
-proc BasicRaftClusterInit*(nodesIds: seq[RaftNodeId]): BasicRaftCluster =
+proc basicRaftClusterInit*(nodesIds: seq[RaftNodeId], electionTimeout=5, heartBeatTimeout=5): BasicRaftCluster =
   new(result)
   for nodeId in nodesIds:
     var
       peersIds = nodesIds
 
     peersIds.del(peersIds.find(nodeId))
-    result.nodes[nodeId] = BasicRaftNode.new(nodeId, peersIds, BasicRaftClusterRaftMessageSendCallbackCreate[SmCommand, SmState](result), electionTimeout=50, heartBeatTimeout=50)
+    result.nodes[nodeId] = BasicRaftNode.new(nodeId, peersIds, basicRaftClusterRaftMessageSendCallbackCreate[SmCommand, SmState](result), electionTimeout, heartBeatTimeout)
 

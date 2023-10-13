@@ -18,7 +18,7 @@ proc basicStateMachineMain*() =
   suite "Test Basic State Machine Implementation ":
 
     test "Test Init":
-      RaftSmInit(sm)
+      raftSmInit(sm)
 
       check sm != nil and sm.state != nil and sm.state.len == 0
 
@@ -41,7 +41,7 @@ proc basicStateMachineMain*() =
 
     test "Apply commands from the Log and check result":
       for c in smCommandsLog:
-        RaftSmApply(sm, c)
+        raftSmApply(sm, c)
 
       check sm.state[] == {"b": "b", "c": "c", "e": "e", "f": "f", "g": "g", "h": "h"}.toTable
 

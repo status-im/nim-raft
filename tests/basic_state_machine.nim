@@ -26,11 +26,11 @@ type
 
   RaftBasicSm* = RaftNodeStateMachine[SmCommand, SmState]
 
-proc RaftSmInit*(stateMachine: var RaftBasicSm) =
+proc raftSmInit*(stateMachine: var RaftBasicSm) =
   new(stateMachine)
   new(stateMachine.state)
 
-proc RaftSmApply*(stateMachine: RaftBasicSm, command: SmCommand) =
+proc raftSmApply*(stateMachine: RaftBasicSm, command: SmCommand) =
   case command.cmd:
     of scSet:
       stateMachine.state[command.key] = command.val

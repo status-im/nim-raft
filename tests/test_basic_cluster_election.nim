@@ -20,23 +20,23 @@ proc basicClusterElectionMain*() =
     test "Basic Raft Cluster Init (5 nodes)":
       for i in 0..4:
         nodesIds[i] = genUUID()
-      cluster = BasicRaftClusterInit(nodesIds)
+      cluster = basicRaftClusterInit(nodesIds, 3, 3)
       check cluster != nil
 
     test "Start Basic Raft Cluster and wait it to converge for a 2 seconds interval (Elect a Leader)":
-      BasicRaftClusterStart(cluster)
+      basicRaftClusterStart(cluster)
       let dur = seconds(2)
       waitFor sleepAsync(dur)
       let
-        leaderId = BasicRaftClusterGetLeaderId(cluster)
+        leaderId = basicRaftClusterGetLeaderId(cluster)
       check leaderId != DefaultUUID
 
     test "Check for leader every second for a 10 second interval":
       let dur = seconds(1)
-      for i in 0..9:
+      for i in 0..117:
         waitFor sleepAsync(dur)
         let
-          leaderId = BasicRaftClusterGetLeaderId(cluster)
+          leaderId = basicRaftClusterGetLeaderId(cluster)
         check leaderId != DefaultUUID
 
 if isMainModule:
