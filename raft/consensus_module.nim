@@ -87,7 +87,10 @@ proc raftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
 
   withRLock(node.raftStateMutex):
     # Wait for votes or voting timeout
-    await allFutures(node.votesFuts) or raftTimerCreate(node.votingTimeout, proc()=discard)
+    let all = allFutures(node.votesFuts)
+    await all or raftTimerCreate(node.votingTimeout, proc()=discard)
+    if not all.finished:
+      debug "Raft Node Voting timeout", node_id=node.id
 
     # Process votes (if any)
     for voteFut in node.votesFuts:
