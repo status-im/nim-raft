@@ -61,7 +61,7 @@ proc raftNodeAbortElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
   withRLock(node.raftStateMutex):
     node.state = rnsFollower
     for fut in node.votesFuts:
-        waitFor cancelAndWait(fut)
+        asyncSpawn cancelAndWait(fut)
 
 proc raftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
   mixin raftNodeScheduleElectionTimeout, raftTimerCreate
@@ -75,21 +75,24 @@ proc raftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
     node.votedFor = node.id
     debug "Raft Node started election", node_id=node.id, state=node.state, voted_for=node.votedFor
 
-  for peer in node.peers:
-    peer.hasVoted = false
-    node.votesFuts.add(node.msgSendCallback(
-        RaftMessage[SmCommandType, SmStateType](
-          op: rmoRequestVote, msgId: genUUID(), senderId: node.id,
-          receiverId: peer.id, lastLogTerm: raftNodeLogEntryGet(node, raftNodeLogIndexGet(node)).term,
-          lastLogIndex: raftNodeLogIndexGet(node), senderTerm: node.currentTerm)
+    for peer in node.peers:
+      peer.hasVoted = false
+      node.votesFuts.add(node.msgSendCallback(
+          RaftMessage[SmCommandType, SmStateType](
+            op: rmoRequestVote, msgId: genUUID(), senderId: node.id,
+            receiverId: peer.id, lastLogTerm: raftNodeLogEntryGet(node, raftNodeLogIndexGet(node)).term,
+            lastLogIndex: raftNodeLogIndexGet(node), senderTerm: node.currentTerm)
+        )
       )
-    )
 
   withRLock(node.raftStateMutex):
+    # Wait for votes or voting timeout
+    await allFutures(node.votesFuts) or raftTimerCreate(node.votingTimeout, proc()=discard)
+
     # Process votes (if any)
     for voteFut in node.votesFuts:
-      awaitWithTimeout(voteFut, raftTimerCreate(node.votingTimeout, proc()=debug "Raft Node voting timeout", node_id=node.id)):
-        let respVote = RaftMessageResponse[SmCommandType, SmStateType](f.read)
+      if voteFut.finished and not voteFut.cancelled:
+        let respVote = RaftMessageResponse[SmCommandType, SmStateType](voteFut.read)
         debug "Received vote", node_id=node.id, sender_id=respVote.senderId, granted=respVote.granted
 
         for p in node.peers:
@@ -153,6 +156,7 @@ proc raftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCo
   withRLock(node.raftStateMutex):
     var
       logEntry: RaftLogEntry[SmCommandType](term: node.currentTerm, data: cmd, entryType: etData)
+
     raftNodeLogAppend(node, logEntry)
 
     for peer in node.peers:
@@ -163,4 +167,5 @@ proc raftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCo
           prevLogTerm: raftNodeLogEntryGet(node, raftNodeLogIndexGet(node)).term,
           commitIndex: node.commitIndex, entries: @[logEntry]
         )
+
       node.replicateFuts.add(node.msgSendCallback(msg))
