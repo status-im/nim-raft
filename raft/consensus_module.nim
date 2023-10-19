@@ -172,3 +172,7 @@ proc raftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCo
         )
 
       node.replicateFuts.add(node.msgSendCallback(msg))
+
+    node.commitIndex.inc
+    raftNodeApplyLogEntry(node, raftNodeLogEntryGet(node, node.commitIndex)) # Apply to state machine
+    

@@ -18,6 +18,7 @@ type
 
   BasicRaftCluster* = ref object
     nodes*: Table[RaftNodeId, BasicRaftNode]
+    nodesLock*: RLock
 
 proc basicRaftClusterRaftMessageSendCallbackCreate[SmCommandType, SmStateType](cluster: BasicRaftCluster): RaftMessageSendCallback[SmCommandType, SmStateType] =
   proc (msg: RaftMessageBase[SmCommandType, SmStateType]): Future[RaftMessageResponseBase[SmCommandType, SmStateType]] {.async, gcsafe.} =
@@ -29,9 +30,10 @@ proc basicRaftClusterStart*(cluster: BasicRaftCluster) =
 
 proc basicRaftClusterGetLeaderId*(cluster: BasicRaftCluster): UUID =
   result = DefaultUUID
-  for id, node in cluster.nodes:
-    if raftNodeIsLeader(node):
-      return raftNodeIdGet(node)
+  withRLock(cluster.nodesLock):
+    for id, node in cluster.nodes:
+      if raftNodeIsLeader(node):
+        return raftNodeIdGet(node)
 
 proc basicRaftClusterClientRequest*(cluster: BasicRaftCluster, req: RaftNodeClientRequest): Future[RaftNodeClientResponse] {.async.} =
   case req.op:
