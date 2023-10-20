@@ -19,9 +19,11 @@ type
   BasicRaftCluster* = ref object
     nodes*: Table[RaftNodeId, BasicRaftNode]
     nodesLock*: RLock
+    networkDelay*: int
 
 proc basicRaftClusterRaftMessageSendCallbackCreate[SmCommandType, SmStateType](cluster: BasicRaftCluster): RaftMessageSendCallback[SmCommandType, SmStateType] =
   proc (msg: RaftMessageBase[SmCommandType, SmStateType]): Future[RaftMessageResponseBase[SmCommandType, SmStateType]] {.async, gcsafe.} =
+    await raftTimerCreate(rand(cluster.networkDelay), proc()=discard)     # Simulate network delay
     result = await cluster.nodes[msg.receiverId].raftNodeMessageDeliver(msg)
 
 proc basicRaftClusterStart*(cluster: BasicRaftCluster) =
@@ -46,7 +48,7 @@ proc basicRaftClusterClientRequest*(cluster: BasicRaftCluster, req: RaftNodeClie
     of rncroExecSmCommand:
       discard
 
-proc basicRaftClusterInit*(nodesIds: seq[RaftNodeId], electionTimeout: int=150, heartBeatTimeout: int=150, appendEntriesRespTimeout: int=20, votingRespTimeout: int=20,
+proc basicRaftClusterInit*(nodesIds: seq[RaftNodeId], networkDelay: int=25, electionTimeout: int=150, heartBeatTimeout: int=150, appendEntriesRespTimeout: int=20, votingRespTimeout: int=20,
                            heartBeatRespTimeout: int=10): BasicRaftCluster =
   new(result)
   for nodeId in nodesIds:
@@ -54,6 +56,7 @@ proc basicRaftClusterInit*(nodesIds: seq[RaftNodeId], electionTimeout: int=150, 
       peersIds = nodesIds
 
     peersIds.del(peersIds.find(nodeId))
+    result.networkDelay = networkDelay
     result.nodes[nodeId] = BasicRaftNode.new(nodeId, peersIds,
                                              basicRaftClusterRaftMessageSendCallbackCreate[SmCommand, SmState](result),
                                              electionTimeout, heartBeatTimeout, appendEntriesRespTimeout, votingRespTimeout, heartBeatRespTimeout)

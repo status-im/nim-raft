@@ -181,6 +181,10 @@ proc raftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCo
 
     raftNodeLogAppend(node, logEntry)
 
+    for fut in node.replicateFuts:
+      discard fut
+    node.replicateFuts.clear
+
     for peer in node.peers:
       var
         msg: RaftMessage[SmCommandType, SmStateType] = RaftMessage[SmCommandType, SmStateType](

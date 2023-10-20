@@ -20,7 +20,8 @@ export
   protocol,
   consensus_module,
   log_ops,
-  chronicles
+  chronicles,
+  random
 
 # Forward declarations
 proc raftNodeSmInit*[SmCommandType, SmStateType](stateMachine: var RaftNodeStateMachine[SmCommandType, SmStateType])
