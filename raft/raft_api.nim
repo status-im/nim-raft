@@ -144,13 +144,16 @@ proc raftNodeScheduleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCom
 
 proc raftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
   debug "Raft Node sending Heart-Beat to peers", node_id=node.id
-  for raftPeer in node.peers:
-    let msgHrtBt = RaftMessage[SmCommandType, SmStateType](
-      op: rmoAppendLogEntry, senderId: node.id, receiverId: raftPeer.id,
-      senderTerm: raftNodeTermGet(node), commitIndex: node.commitIndex,
-      prevLogIndex: raftNodeLogIndexGet(node) - 1, prevLogTerm: if raftNodeLogIndexGet(node) > 0: raftNodeLogEntryGet(node, raftNodeLogIndexGet(node) - 1).term else: 0
-    )
-    discard node.msgSendCallback(msgHrtBt)
+
+  withRLock(node.raftStateMutex):
+    for raftPeer in node.peers:
+      let msgHrtBt = RaftMessage[SmCommandType, SmStateType](
+        op: rmoAppendLogEntry, senderId: node.id, receiverId: raftPeer.id,
+        senderTerm: raftNodeTermGet(node), commitIndex: node.commitIndex,
+        prevLogIndex: raftNodeLogIndexGet(node) - 1, prevLogTerm: if raftNodeLogIndexGet(node) > 0: raftNodeLogEntryGet(node, raftNodeLogIndexGet(node) - 1).term else: 0
+      )
+      discard node.msgSendCallback(msgHrtBt)
+
   raftNodeScheduleHeartBeat(node)
 
 proc raftNodeScheduleElectionTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =

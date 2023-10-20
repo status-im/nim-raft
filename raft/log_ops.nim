@@ -32,7 +32,7 @@ proc raftNodeApplyLogEntry*[SmCommandType, SmStateType](node: RaftNode[SmCommand
 
   if entryIndex > node.lastApplied:
     debug "Applying log entry: ", node_id=node.id, entryIndex=entryIndex, entry=repr(logEntry)
-    raftNodeSmApply(node.stateMachine, raftNodeLogEntryGet(node, entryIndex))
+    raftNodeSmApply(node.stateMachine, raftNodeLogEntryGet(node, entryIndex).data.get)
     node.lastApplied = entryIndex
 
   else:

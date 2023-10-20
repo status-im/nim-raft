@@ -162,6 +162,7 @@ proc raftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCo
   withRLock(node.raftStateMutex):
     var
       logEntry: RaftLogEntry[SmCommandType](term: node.currentTerm, data: cmd, entryType: etData)
+
     raftNodeLogAppend(node, logEntry)
 
     for peer in node.peers:
