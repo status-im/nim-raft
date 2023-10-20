@@ -127,8 +127,9 @@ type
 
     electionTimeout*: int
     heartBeatTimeout*: int
-    appendEntriesTimeout*: int
-    votingTimeout*: int
+    appendEntriesRespTimeout*: int
+    votingRespTimeout*: int
+    heartBeatRespTimeout*: int
 
     heartBeatTimer*: Future[void]
     electionTimeoutTimer*: Future[void]
@@ -139,6 +140,7 @@ type
     # Misc
     msgSendCallback*: RaftMessageSendCallback[SmCommandType, SmStateType]
     persistentStorage: RaftNodePersistentStorage[SmCommandType, SmStateType]
+    hrtBtSuccess*: bool
 
     # Persistent state
     id*: RaftNodeId                          # This Raft Node ID

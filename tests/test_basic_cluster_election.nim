@@ -20,7 +20,7 @@ proc basicClusterElectionMain*() =
     test "Basic Raft Cluster Init (5 nodes)":
       for i in 0..4:
         nodesIds[i] = genUUID()
-      cluster = basicRaftClusterInit(nodesIds, 150, 150, 20, 20)
+      cluster = basicRaftClusterInit(nodesIds, 150, 150, 20, 20, 10)
       check cluster != nil
 
     test "Start Basic Raft Cluster and wait it to converge for a 2 seconds interval (Elect a Leader)":

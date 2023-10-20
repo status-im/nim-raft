@@ -46,7 +46,8 @@ proc basicRaftClusterClientRequest*(cluster: BasicRaftCluster, req: RaftNodeClie
     of rncroExecSmCommand:
       discard
 
-proc basicRaftClusterInit*(nodesIds: seq[RaftNodeId], electionTimeout=150, heartBeatTimeout=150, appendEntriesTimeout=20, votingTimeout=20): BasicRaftCluster =
+proc basicRaftClusterInit*(nodesIds: seq[RaftNodeId], electionTimeout: int=150, heartBeatTimeout: int=150, appendEntriesRespTimeout: int=20, votingRespTimeout: int=20,
+                           heartBeatRespTimeout: int=10): BasicRaftCluster =
   new(result)
   for nodeId in nodesIds:
     var
@@ -55,5 +56,5 @@ proc basicRaftClusterInit*(nodesIds: seq[RaftNodeId], electionTimeout=150, heart
     peersIds.del(peersIds.find(nodeId))
     result.nodes[nodeId] = BasicRaftNode.new(nodeId, peersIds,
                                              basicRaftClusterRaftMessageSendCallbackCreate[SmCommand, SmState](result),
-                                             electionTimeout, heartBeatTimeout, appendEntriesTimeout, votingTimeout)
+                                             electionTimeout, heartBeatTimeout, appendEntriesRespTimeout, votingRespTimeout, heartBeatRespTimeout)
 

@@ -32,8 +32,9 @@ proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateTyp
                   msgSendCallback: RaftMessageSendCallback;
                   electionTimeout: int=150;
                   heartBeatTimeout: int=150;
-                  appendEntriesTimeout: int=30;
-                  votingTimeout: int=20
+                  appendEntriesRespTimeout: int=20;
+                  votingRespTimeout: int=20;
+                  heartBeatRespTimeout: int=10
   ): T =
   var
     peers: RaftNodePeers
@@ -44,8 +45,8 @@ proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateTyp
   result = T(
     id: id, state: rnsFollower, currentTerm: 0, peers: peers, commitIndex: 0, lastApplied: 0,
     msgSendCallback: msgSendCallback, votedFor: DefaultUUID, currentLeaderId: DefaultUUID,
-    electionTimeout: electionTimeout, heartBeatTimeout: heartBeatTimeout, appendEntriesTimeout: appendEntriesTimeout,
-    votingTimeout: votingTimeout
+    electionTimeout: electionTimeout, heartBeatTimeout: heartBeatTimeout, appendEntriesRespTimeout: appendEntriesRespTimeout,
+    heartBeatRespTimeout: heartBeatRespTimeout, votingRespTimeout: votingRespTimeout, hrtBtSuccess: false
   )
 
   raftNodeSmInit(result.stateMachine)
@@ -146,13 +147,27 @@ proc raftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommand
   debug "Raft Node sending Heart-Beat to peers", node_id=node.id
 
   withRLock(node.raftStateMutex):
+    var hrtBtFuts: seq[Future[RaftMessageResponseBase[SmCommandType, SmStateType]]]
+
     for raftPeer in node.peers:
       let msgHrtBt = RaftMessage[SmCommandType, SmStateType](
         op: rmoAppendLogEntry, senderId: node.id, receiverId: raftPeer.id,
         senderTerm: raftNodeTermGet(node), commitIndex: node.commitIndex,
         prevLogIndex: raftNodeLogIndexGet(node) - 1, prevLogTerm: if raftNodeLogIndexGet(node) > 0: raftNodeLogEntryGet(node, raftNodeLogIndexGet(node) - 1).term else: 0
       )
-      discard node.msgSendCallback(msgHrtBt)
+      hrtBtFuts.add(node.msgSendCallback(msgHrtBt))
+    let allHrtBtFuts = allFutures(hrtBtFuts)
+    await allHrtBtFuts or raftTimerCreate(node.heartBeatRespTimeout, proc()=discard)
+
+    var successCnt = 0
+    for fut in hrtBtFuts:
+      if fut.finished:
+        let resp = RaftMessageResponse[SmCommandType, SmStateType](fut.read)
+        if resp.success:
+          successCnt.inc
+
+    if successCnt >= (node.peers.len div 2 + node.peers.len mod 2):
+      node.hrtBtSuccess = true
 
   raftNodeScheduleHeartBeat(node)
 
@@ -161,6 +176,7 @@ proc raftNodeScheduleElectionTimeout*[SmCommandType, SmStateType](node: RaftNode
     node.electionTimeoutTimer = raftTimerCreate(node.electionTimeout + rand(node.electionTimeout), proc =
       asyncSpawn raftNodeStartElection(node)
     )
+    node.hrtBtSuccess = false
 
 # Raft Node Control
 proc raftNodeCancelTimers*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =

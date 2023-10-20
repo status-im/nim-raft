@@ -72,11 +72,22 @@ proc raftNodeAbortElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
 
 proc raftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
   mixin raftNodeScheduleElectionTimeout, raftTimerCreate
-  raftNodeScheduleElectionTimeout(node)
 
   withRLock(node.raftStateMutex):
+    if node.state == rnsLeader and node.hrtBtSuccess:
+      raftNodeScheduleElectionTimeout(node)
+      return
+
+    if node.state == rnsLeader and not node.hrtBtSuccess:
+      node.state = rnsFollower
+      node.currentLeaderId = DefaultUUID
+      node.votedFor = DefaultUUID
+      raftNodeScheduleElectionTimeout(node)
+      return
+
     while node.votesFuts.len > 0:
      discard node.votesFuts.pop
+
     node.currentTerm.inc
     node.state = rnsCandidate
     node.votedFor = node.id
@@ -94,7 +105,7 @@ proc raftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
 
     # Wait for votes or voting timeout
     let all = allFutures(node.votesFuts)
-    await all or raftTimerCreate(node.votingTimeout, proc()=discard)
+    await all or raftTimerCreate(node.votingRespTimeout, proc()=discard)
     if not all.finished:
       debug "Raft Node Voting timeout", node_id=node.id
 
@@ -114,6 +125,7 @@ proc raftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
         await cancelAndWait(node.electionTimeoutTimer)
         debug "Raft Node transition to leader", node_id=node.id
         node.state = rnsLeader        # Transition to leader state and send Heart-Beat to establish this node as the cluster leader
+        raftNodeScheduleElectionTimeout(node)
         asyncSpawn raftNodeSendHeartBeat(node)
 
 proc raftNodeHandleAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessage[SmCommandType, SmStateType]):
@@ -177,7 +189,7 @@ proc raftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCo
       node.replicateFuts.add(node.msgSendCallback(msg))
 
     let allReplicateFuts = allFutures(node.replicateFuts)
-    await allReplicateFuts or raftTimerCreate(node.appendEntriesTimeout, proc()=discard)
+    await allReplicateFuts or raftTimerCreate(node.appendEntriesRespTimeout, proc()=discard)
     if not allReplicateFuts.finished:
       debug "Raft Node Replication timeout", node_id=node.id
 
