@@ -16,7 +16,7 @@ proc raftNodeLogIndexGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandTy
 
 proc raftNodeLogEntryGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], logIndex: RaftLogIndex): RaftNodeLogEntry[SmCommandType] =
   if logIndex > 0:
-    result = node.log.logData[logIndex]
+    result = node.log.logData[logIndex - 1]
 
 proc raftNodeLogAppend*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], logEntry: RaftNodeLogEntry[SmCommandType]) =
   node.log.logData.add(logEntry)

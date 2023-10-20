@@ -22,31 +22,38 @@ proc raftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType,
   if cnt >= (node.peers.len div 2 + node.peers.len mod 2):
     result = true
 
+proc raftNodeCheckCommitIndex*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessage[SmCommandType, SmStateType]) =
+  withRLock(node.raftStateMutex):
+    if msg.commitIndex > node.commitIndex:
+      let newcommitIndex = min(msg.commitIndex, raftNodeLogIndexGet(node))
+
+      while node.commitIndex < newcommitIndex:
+        node.commitIndex.inc
+        raftNodeApplyLogEntry(node, raftNodeLogEntryGet(node, node.commitIndex))
+
 proc raftNodeHandleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessage[SmCommandType, SmStateType]):
     RaftMessageResponse[SmCommandType, SmStateType] =
   debug "Received heart-beat", node_id=node.id, sender_id=msg.sender_id, node_current_term=node.currentTerm, sender_term=msg.senderTerm
   result = RaftMessageResponse[SmCommandType, SmStateType](op: rmoAppendLogEntry, senderId: node.id, receiverId: msg.senderId, msgId: msg.msgId, success: false)
   withRLock(node.raftStateMutex):
-    if node.state == rnsStopped:
-      return
-
     if msg.senderTerm >= node.currentTerm:
       raftNodeCancelTimers(node)
       if node.state == rnsCandidate:
         raftNodeAbortElection(node)
+
       result.success = true
       node.currentTerm = msg.senderTerm
       node.votedFor = DefaultUUID
       node.currentLeaderId = msg.senderId
+
+      raftNodeCheckCommitIndex(node, msg)
+
       raftNodeScheduleElectionTimeout(node)
 
 proc raftNodeHandleRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessage[SmCommandType, SmStateType]):
     RaftMessageResponse[SmCommandType, SmStateType] =
   result = RaftMessageResponse[SmCommandType, SmStateType](op: rmoRequestVote, msgId: msg.msgId, senderId: node.id, receiverId: msg.senderId, granted: false)
   withRLock(node.raftStateMutex):
-    if node.state == rnsStopped:
-      return
-
     if msg.senderTerm > node.currentTerm and node.votedFor == DefaultUUID:
       if msg.lastLogTerm > raftNodeLogEntryGet(node, raftNodeLogIndexGet(node)).term or
         (msg.lastLogTerm == raftNodeLogEntryGet(node, raftNodeLogIndexGet(node)).term and msg.lastLogIndex >= raftNodeLogIndexGet(node)):
@@ -85,7 +92,6 @@ proc raftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
         )
       )
 
-  withRLock(node.raftStateMutex):
     # Wait for votes or voting timeout
     let all = allFutures(node.votesFuts)
     await all or raftTimerCreate(node.votingTimeout, proc()=discard)
@@ -114,9 +120,6 @@ proc raftNodeHandleAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmC
     RaftMessageResponse[SmCommandType, SmStateType] =
   result = RaftMessageResponse[SmCommandType, SmStateType](op: rmoAppendLogEntry, senderId: node.id, receiverId: msg.senderId, msgId: msg.msgId, success: false)
   withRLock(node.raftStateMutex):
-    if node.state == rnsStopped:
-      return
-
     if msg.senderTerm >= node.currentTerm:
       raftNodeCancelTimers(node)
       if node.state == rnsCandidate:
@@ -146,33 +149,48 @@ proc raftNodeHandleAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmC
       for entry in msg.logEntries.get:
         raftNodeLogAppend(node, entry)
 
-    if msg.commitIndex > node.commitIndex:
-      node.commitIndex = min(msg.commitIndex, raftNodeLogIndexGet(node))
-      raftNodeApplyLogEntry(node, raftNodeLogEntryGet(node, node.commitIndex))
+    raftNodeCheckCommitIndex(node, msg)
 
     result.success = true
 
 
-proc raftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], cmd: SmCommandType) =
+proc raftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], cmd: SmCommandType): Future[bool] {.async.} =
   mixin RaftLogEntry, raftTimerCreate
+
+  result = false
 
   withRLock(node.raftStateMutex):
     var
       logEntry: RaftLogEntry[SmCommandType](term: node.currentTerm, data: cmd, entryType: etData)
-
     raftNodeLogAppend(node, logEntry)
 
     for peer in node.peers:
       var
         msg: RaftMessage[SmCommandType, SmStateType] = RaftMessage[SmCommandType, SmStateType](
           op: rmoAppendLogEntry, msgId: genUUID(), senderId: node.id, receiverId: peer.id,
-          senderTerm: node.currentTerm, prevLogIndex: raftNodeLogIndexGet(node),
-          prevLogTerm: raftNodeLogEntryGet(node, raftNodeLogIndexGet(node)).term,
+          senderTerm: node.currentTerm, prevLogIndex: raftNodeLogIndexGet(node) - 1,
+          prevLogTerm: raftNodeLogEntryGet(node, raftNodeLogIndexGet(node) - 1).term,
           commitIndex: node.commitIndex, entries: @[logEntry]
         )
 
       node.replicateFuts.add(node.msgSendCallback(msg))
 
-    node.commitIndex.inc
-    raftNodeApplyLogEntry(node, raftNodeLogEntryGet(node, node.commitIndex)) # Apply to state machine
-    
+    let allReplicateFuts = allFutures(node.replicateFuts)
+    await allReplicateFuts or raftTimerCreate(node.appendEntriesTimeout, proc()=discard)
+    if not allReplicateFuts.finished:
+      debug "Raft Node Replication timeout", node_id=node.id
+
+    var replicateCnt = 0
+    for fut in node.replicateFuts:
+      if fut.finished and not fut.cancelled:
+        let resp = RaftMessageResponse[SmCommandType, SmStateType](fut.read)
+        if resp.success:
+          replicateCnt.inc
+          info "Raft Node Replication success", node_id=node.id, sender_id=resp.senderId
+        else:
+          info "Raft Node Replication failed", node_id=node.id, sender_id=resp.senderId
+
+    if replicateCnt >= (node.peers.len div 2 + node.peers.len mod 2):
+      node.commitIndex = raftNodeLogIndexGet(node)
+      raftNodeApplyLogEntry(node, raftNodeLogEntryGet(node, node.commitIndex))  # Apply to state machine
+      result = true

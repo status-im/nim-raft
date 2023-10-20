@@ -46,7 +46,8 @@ type
   RaftNodeClientResponseError* = enum
     rncreSuccess = 0,
     rncreFail = 1,
-    rncreNotLeader = 2
+    rncreNotLeader = 2,
+    rncreStopped = 3
 
   RaftNodeClientRequest*[SmCommandType] = ref object
     op*: RaftNodeClientRequestOps

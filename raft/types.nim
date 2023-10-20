@@ -30,8 +30,7 @@ type
     rnsUnknown = 0,
     rnsFollower = 1,
     rnsCandidate = 2
-    rnsLeader = 3,
-    rnsStopped = 4
+    rnsLeader = 3
 
   RaftNodeId* = UUID                        # uuid4 uniquely identifying every Raft Node
   RaftNodeTerm* = int                       # Raft Node Term Type

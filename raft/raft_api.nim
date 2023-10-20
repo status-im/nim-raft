@@ -39,7 +39,7 @@ proc new*[SmCommandType, SmStateType](T: type RaftNode[SmCommandType, SmStateTyp
     peers: RaftNodePeers
 
   for peerId in peersIds:
-    peers.add(RaftNodePeer(id: peerId, nextIndex: 0, matchIndex: 0, hasVoted: false, canVote: true))
+    peers.add(RaftNodePeer(id: peerId, nextIndex: 1, matchIndex: 0, hasVoted: false, canVote: true))
 
   result = T(
     id: id, state: rnsFollower, currentTerm: 0, peers: peers, commitIndex: 0, lastApplied: 0,
@@ -95,17 +95,26 @@ proc raftNodeMessageDeliver*[SmCommandType, SmStateType](node: RaftNode[SmComman
 # Process Raft Node Client Requests
 proc raftNodeServeClientRequest*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], req: RaftNodeClientRequest[SmCommandType]):
     Future[RaftNodeClientResponse[SmStateType]] {.async, gcsafe.} =
-  case req.op
-    of rncroExecSmCommand:
-      # TODO: implemenmt command handling
-      discard
-    of rncroRequestSmState:
-      if raftNodeIsLeader(node):
+
+  withRLock(node.raftStateMutex):
+    if not raftNodeIsLeader(node):
+      return RaftNodeClientResponse(nodeId: node.id, error: rncreNotLeader, currentLeaderId: node.currentLeaderId)
+
+    case req.op
+      of rncroExecSmCommand:
+
+        let resFut = await raftNodeReplicateSmCommand(node, req.smCommand)
+
+        if resFut.read:
+          return RaftNodeClientResponse(nodeId: node.id, error: rncreSuccess, state: raftNodeStateGet(node))
+        else:
+          return RaftNodeClientResponse(nodeId: node.id, error: rncreFail, state: raftNodeStateGet(node))
+
+      of rncroRequestSmState:
         return RaftNodeClientResponse(nodeId: node.id, error: rncreSuccess, state: raftNodeStateGet(node))
+
       else:
-        return RaftNodeClientResponse(nodeId: node.id, error: rncreNotLeader, currentLeaderId: node.currentLeaderId)
-    else:
-      raiseAssert "Unknown client request operation."
+        raiseAssert "Unknown client request operation."
 
 # Abstract State Machine Ops
 func raftNodeSmStateGet*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): SmStateType =
@@ -164,7 +173,6 @@ proc raftNodeStop*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmS
     # Abort election if in election
     if node.state == rnsCandidate:
       raftNodeAbortElection(node)s
-    node.state = rnsStopped
     # Cancel pending timers (if any)
     raftNodeCancelTimers(node)
 
