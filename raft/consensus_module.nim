@@ -29,7 +29,7 @@ proc raftNodeCheckCommitIndex*[SmCommandType, SmStateType](node: RaftNode[SmComm
 
       while node.commitIndex < newcommitIndex:
         node.commitIndex.inc
-        raftNodeApplyLogEntry(node, raftNodeLogEntryGet(node, node.commitIndex))
+        raftNodeApplyLogEntry(node, node.commitIndex)
 
 proc raftNodeHandleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessage[SmCommandType, SmStateType]):
     RaftMessageResponse[SmCommandType, SmStateType] =
@@ -192,5 +192,5 @@ proc raftNodeReplicateSmCommand*[SmCommandType, SmStateType](node: RaftNode[SmCo
 
     if replicateCnt >= (node.peers.len div 2 + node.peers.len mod 2):
       node.commitIndex = raftNodeLogIndexGet(node)
-      raftNodeApplyLogEntry(node, raftNodeLogEntryGet(node, node.commitIndex))  # Apply to state machine
+      raftNodeApplyLogEntry(node, node.commitIndex)   # Apply to state machine
       result = true
