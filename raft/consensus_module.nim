@@ -42,6 +42,7 @@ proc raftNodeHandleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmComma
         raftNodeAbortElection(node)
 
       result.success = true
+      node.state = rnsFollower
       node.currentTerm = msg.senderTerm
       node.votedFor = DefaultUUID
       node.currentLeaderId = msg.senderId
@@ -57,8 +58,10 @@ proc raftNodeHandleRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCom
     if msg.senderTerm > node.currentTerm and node.votedFor == DefaultUUID:
       if msg.lastLogTerm > raftNodeLogEntryGet(node, raftNodeLogIndexGet(node)).term or
         (msg.lastLogTerm == raftNodeLogEntryGet(node, raftNodeLogIndexGet(node)).term and msg.lastLogIndex >= raftNodeLogIndexGet(node)):
+
         if node.electionTimeoutTimer != nil:
           asyncSpawn cancelAndWait(node.electionTimeoutTimer)
+
         node.votedFor = msg.senderId
         node.currentLeaderId = DefaultUUID
         result.granted = true
@@ -79,6 +82,7 @@ proc raftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
       return
 
     if node.state == rnsLeader and not node.hrtBtSuccess:
+      debug "Raft Node transition to follower - unsuccsessful heart beat rounds", node_id=node.id
       node.state = rnsFollower
       node.currentLeaderId = DefaultUUID
       node.votedFor = DefaultUUID
