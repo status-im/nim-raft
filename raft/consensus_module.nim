@@ -82,12 +82,15 @@ proc raftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
       return
 
     if node.state == rnsLeader and not node.hrtBtSuccess:
+      raftNodeCancelTimers(node)
       debug "Raft Node transition to follower - unsuccsessful heart beat rounds", node_id=node.id
       node.state = rnsFollower
       node.currentLeaderId = DefaultUUID
       node.votedFor = DefaultUUID
       raftNodeScheduleElectionTimeout(node)
       return
+
+    raftNodeScheduleElectionTimeout(node)
 
     while node.votesFuts.len > 0:
      discard node.votesFuts.pop
@@ -127,10 +130,14 @@ proc raftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
     if node.state == rnsCandidate:
       if raftNodeQuorumMin(node):
         await cancelAndWait(node.electionTimeoutTimer)
+        raftNodeScheduleElectionTimeout(node)
         debug "Raft Node transition to leader", node_id=node.id
         node.state = rnsLeader        # Transition to leader state and send Heart-Beat to establish this node as the cluster leader
-        raftNodeScheduleElectionTimeout(node)
         asyncSpawn raftNodeSendHeartBeat(node)
+      else:
+        node.state = rnsFollower
+        node.currentLeaderId = DefaultUUID
+        node.votedFor = DefaultUUID
 
 proc raftNodeHandleAppendEntries*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType], msg: RaftMessage[SmCommandType, SmStateType]):
     RaftMessageResponse[SmCommandType, SmStateType] =
