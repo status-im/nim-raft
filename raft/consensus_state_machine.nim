@@ -9,14 +9,15 @@
 
 import std/tables
 import std/rlocks
+import std/options
 
 type
-  # Define callback to use with Terminals
+  # Define callback to use with Terminals and Eventually State Transitions
   ConsensusFSMCallbackType*[NodeType] = proc(node: NodeType) {.gcsafe.}
   # Define Non-Terminals as a (unique) tuples of the internal state and a sequence of callbacks
   NonTerminalSymbol*[NodeType, NodeStates] = (NodeStates, seq[ConsensusFSMCallbackType[NodeType]])
   # Define loose conditions computed from our NodeType
-  Condition*[NodeType] = proc(node: NodeType): bool
+  Condition*[NodeType] = proc(node: NodeType, msg: Option[RaftMessage], logEntry: Option[RaftNodeLogEntry], preConditionIndex: Option[int]): bool
   # Define Terminals as a tuple of a Event and (Hash) Table of sequences of (loose) conditions and their respective values computed from NodeType (Truth Table)
   TerminalSymbol*[NodeType, EventType] = (Table[EventType, (seq[Condition[NodeType]], seq[bool])])
   # Define State Transition Rules LUT of the form ( NonTerminal -> Terminal ) -> NonTerminal )
@@ -45,7 +46,7 @@ proc computeFSMInputRobustLogic[NodeType, EventType](node: NodeType, event: Even
   var
     robustLogicEventTerminal = rawInput[event]
   for f, v in robustLogicEventTerminal:
-    v = f(node)
+    v = f(node, msg, logEntry, preConditionIndex)
   rawInput[event] = robustLogicEventTerminal
   result = rawInput
 
