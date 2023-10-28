@@ -13,15 +13,25 @@ import types
 
 
 type
+  EventType = enum
+    # Node events
+    NodeStart, NodeStop, NodeTick, NodeStepDown, NodeStepDownToCandidate, NodeStepDownToFollower, NodeStepDownToLeader,
+    NodeStepDownToShutdown, VotingTimeout, ElectionTimeout, HeartbeatTimeout, HeartbeatReceived, HeartbeatSent, AppendEntriesReceived,
+    AppendEntriesSent, RequestVoteReceived, RequestVoteSent, RequestVoteGranted, RequestVoteDenied, ClientRequestReceived,
+    ClientRequestSent, ClientRequestProcessed, ClientRequestFailed, ClientRequestTimeout, ClientRequestRetry, ClientRequestRetryExhausted,
+    AddNewNode, RemoveNode, NodeShutdown, NodeShutdownComplete, NodeShutdownFailed, NodeShutdownTimeout, NodeShutdownRetry
+
   # Define callback to use with Terminals. Node states are updated/read in-place in the node object
   ConsensusFSMCallbackType*[NodeType] = proc(node: NodeType) {.gcsafe.}
   # Define Non-Terminals as a (unique) tuples of the internal state and a sequence of callbacks
   NonTerminalSymbol*[NodeType] = (NodeType, seq[ConsensusFSMCallbackType[NodeType]])
   # Define loose conditions computed from our NodeType (Truth Table)
+  LogicalFunctionConditionValueType* = bool
   LogicalFunctionCondition*[EventType, NodeTytpe, RaftMessageBase] = proc(e: EventType, n: NodeTytpe, msg: Option[RaftMessageBase]): bool
+  LogicalFunctionConditionsLUT*[EventType, NodeType, RaftMessageBase] = Table[(EventType, NodeType), LogicalFunctionCondition[EventType, NodeType, Option[RaftMessageBase]]]
   # Define Terminals as a tuple of a Event and a sequence of logical functions (conditions) and their respective values computed from NodeType, NodeTytpe and RaftMessageBase
   # (kind of Truth Table)
-  TerminalSymbol*[EventType, NodeType, RaftMessageBase] = (EventType, seq[LogicalFunctionCondition[EventType, NodeType, Option[RaftMessageBase]]])
+  TerminalSymbol*[EventType, NodeType, RaftMessageBase] = (EventType, seq[LogicalFunctionConditionValueType])
   # Define State Transition Rules LUT of the form ( NonTerminal -> Terminal ) -> NonTerminal )
   StateTransitionsRulesLUT*[NodeType, EventType, RaftMessageBase] = Table[
     (NonTerminalSymbol[NodeType], TerminalSymbol[NodeType, EventType, RaftMessageBase]),
@@ -32,6 +42,7 @@ type
     mtx: RLock
     state: NonTerminalSymbol[NodeType]
     stateTransitionsLUT: StateTransitionsRulesLUT[NodeType, EventType, RaftMessageBase]
+    logicalFunctionsLut: LogicalFunctionConditionsLUT[EventType, NodeType, RaftMessageBase]
 
 # FSM type constructor
 proc new*[NodeType, EventType, NodeStates](T: type ConsensusFSM[NodeType, EventType, RaftMessageBase],
@@ -43,11 +54,13 @@ proc new*[NodeType, EventType, NodeStates](T: type ConsensusFSM[NodeType, EventT
   result.state = startSymbol
   result.stateTransitionsLUT = lut
 
-proc computeFSMLogicFunctionsPermutationValue[NonTerminalSymbol, EventType, RaftMessageBase](nts: NonTerminalSymbol, rawInput: TerminalSymbol, msg: Option[RaftMessageBase]): TerminalSymbol =
+proc computeFSMLogicFunctionsPermutationValue[NonTerminalSymbol, NodeType, EventType, RaftMessageBase](
+    fsm: ConsensusFSM[NodeType, EventType, RaftMessageBase],
+    nts: NonTerminalSymbol, rawInput: TerminalSymbol, msg: Option[RaftMessageBase]): TerminalSymbol =
+  let
+    e = rawInput[0]
   var
-    logicFunctionsConds = rawInput[1]
-
-  let e = rawInput[0]
+    logicFunctionsConds = fsm.logicalFunctionsLut[(e, NodeType)]
 
   for f in nts[2]:
     f = f(nts[1], e, msg)
@@ -59,7 +72,7 @@ proc consensusFSMAdvance[NodeType, EventType](fsm: ConsensusFSM[NodeType, EventT
                          rawInput: TerminalSymbol[EventType, NodeType, RaftMessageBase]): NonTerminalSymbol[NodeType] =
   withRLock():
     var
-      input = computeFSMLogicFunctionsPermutationValue(node, event, rawInput)
+      input = computeFSMLogicFunctionsPermutationValue(fsm, node, event, rawInput)
 
     fsm.state = fsm.stateTransitionsLUT[(fsm.state, input)]
     result = fsm.state
