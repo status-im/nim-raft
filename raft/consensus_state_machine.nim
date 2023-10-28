@@ -25,7 +25,7 @@ type
   ConsensusFSMCallbackType*[NodeType] = proc(node: NodeType) {.gcsafe.}
   # Define Non-Terminals as a (unique) tuples of the internal state and a sequence of callbacks
   NonTerminalSymbol*[NodeType] = (NodeType, seq[ConsensusFSMCallbackType[NodeType]])
-  # Define loose conditions computed from our NodeType (Truth Table)
+  # Define logical functions (conditions) computed from our NodeType etc. (Truth Table)
   LogicalFunctionConditionValueType* = bool
   LogicalFunctionCondition*[EventType, NodeTytpe, RaftMessageBase] = proc(e: EventType, n: NodeTytpe, msg: Option[RaftMessageBase]): bool
   LogicalFunctionConditionsLUT*[EventType, NodeType, RaftMessageBase] = Table[(EventType, NodeType), LogicalFunctionCondition[EventType, NodeType, Option[RaftMessageBase]]]
