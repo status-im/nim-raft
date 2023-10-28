@@ -167,6 +167,9 @@ proc raftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommand
         if resp.success:
           successCnt.inc
 
+      else:
+        await cancelAndWait(fut)
+
     if successCnt >= (node.peers.len div 2 + node.peers.len mod 2):
       node.hrtBtSuccess = true
 

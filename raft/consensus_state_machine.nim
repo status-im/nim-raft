@@ -18,7 +18,7 @@ type
   # Define loose conditions computed from our NodeType
   Condition*[NodeType] = proc(node: NodeType): bool
   # Define Terminals as a tuple of a Event and (Hash) Table of sequences of (loose) conditions and their respective values computed from NodeType (Truth Table)
-  TerminalSymbol*[NodeType, EventType] = (Table[EventType, (seq[Condition[NodeType]], seq[bool])])
+  TerminalSymbol*[NodeType, EventType] = (EventType, (seq[Condition[NodeType]], seq[bool]))
   # Define State Transition Rules LUT of the form ( NonTerminal -> Terminal ) -> NonTerminal )
   StateTransitionsRulesLUT*[NodeType, EventType, NodeStates] = Table[
     (NonTerminalSymbol[NodeType, NodeStates], TerminalSymbol[NodeType, EventType]),
@@ -43,10 +43,12 @@ proc new*[NodeType, EventType, NodeStates](T: type ConsensusFSM[NodeType, EventT
 proc computeFSMInputRobustLogic[NodeType, EventType](node: NodeType, event: EventType, rawInput: TerminalSymbol[NodeType, EventType]):
     TerminalSymbol[NodeType, EventType] =
   var
-    robustLogicEventTerminal = rawInput[event]
-  for f, v in robustLogicEventTerminal:
-    v = f(node)
-  rawInput[event] = robustLogicEventTerminal
+    robustLogicEventTerminal = rawInput[1]
+
+  let f = robustLogicEventTerminal[0]
+
+  robustLogicEventTerminal[1] = f(node)
+  rawInput[1] = robustLogicEventTerminal
   result = rawInput
 
 proc consensusFSMAdvance[NodeType, EventType, NodeStates](fsm: ConsensusFSM[NodeType, EventType, NodeStates], node: NodeType, event: EventType,
@@ -54,5 +56,6 @@ proc consensusFSMAdvance[NodeType, EventType, NodeStates](fsm: ConsensusFSM[Node
   withRLock():
     var
       input = computeFSMInputRobustLogic(node, event, rawInput)
-    fsm.state = fsm.stateTransitionsLUT[fsm.state, input]
+
+    fsm.state = fsm.stateTransitionsLUT[(fsm.state, input)]
     result = fsm.state

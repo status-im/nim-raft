@@ -126,6 +126,9 @@ proc raftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
           if p.id == respVote.senderId:
             p.hasVoted = respVote.granted
 
+      else:
+        await cancelAndWait(voteFut)
+
   withRLock(node.raftStateMutex):
     if node.state == rnsCandidate:
       if raftNodeQuorumMin(node):
