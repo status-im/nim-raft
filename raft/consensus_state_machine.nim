@@ -73,7 +73,7 @@ proc computeFSMLogicFunctionsPermutationValue[NonTerminalSymbol, NodeType, Event
   result = rawInput
 
 proc consensusFSMAdvance[NodeType, EventType](fsm: ConsensusFSM[NodeType, EventType, RaftMessageBase], node: NodeType, event: EventType,
-                         rawInput: TerminalSymbol[EventType, NodeType, RaftMessageBase]): NonTerminalSymbol[NodeType] =
+                         rawInput: TerminalSymbol[EventType, NodeType, RaftMessageBase], msg: Option[RaftMessageBase]): NonTerminalSymbol[NodeType] =
   withRLock():
     var
       input = computeFSMLogicFunctionsPermutationValue(fsm, node, event, rawInput)
