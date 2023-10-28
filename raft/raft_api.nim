@@ -172,6 +172,8 @@ proc raftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommand
 
     if successCnt >= (node.peers.len div 2 + node.peers.len mod 2):
       node.hrtBtSuccess = true
+    else:
+      node.hrtBtSuccess = false
 
   raftNodeScheduleHeartBeat(node)
 
