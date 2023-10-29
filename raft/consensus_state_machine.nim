@@ -30,7 +30,7 @@ type
   # Define logical functions (conditions) computed from our NodeType etc. (Truth Table)
   LogicalFunctionConditionValueType* = bool
   LogicalFunctionCondition*[EventType, NodeTytpe, RaftMessageBase] = proc(e: EventType, n: NodeTytpe, msg: Option[RaftMessageBase]): bool
-  LogicalFunctionConditionsLUT*[EventType, NodeType, RaftMessageBase] = Table[(EventType, NodeType), LogicalFunctionCondition[EventType, NodeType, Option[RaftMessageBase]]]
+  LogicalFunctionConditionsLUT*[EventType, NodeType, RaftMessageBase] = Table[(EventType, NodeType), seq[LogicalFunctionCondition[EventType, NodeType, Option[RaftMessageBase]]]]
 
   # Define Terminals as a tuple of a Event and a sequence of logical functions (conditions) and their respective values computed from NodeType, NodeTytpe and RaftMessageBase
   # (kind of Truth Table)
@@ -66,7 +66,7 @@ proc computeFSMLogicFunctionsPermutationValue[NonTerminalSymbol, NodeType, Event
   var
     logicFunctionsConds = fsm.logicalFunctionsLut[(e, NodeType)]
 
-  for f in nts[2]:
+  for f in logicFunctionsConds:
     f = f(nts[1], e, msg)
 
   rawInput[1] = logicFunctionsConds
