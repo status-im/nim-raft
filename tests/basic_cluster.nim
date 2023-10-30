@@ -21,9 +21,13 @@ type
     nodesLock*: RLock
     networkDelayJitter*: int
 
-proc basicRaftClusterRaftMessageSendCallbackCreate[SmCommandType, SmStateType](cluster: BasicRaftCluster): RaftMessageSendCallback[SmCommandType, SmStateType] =
+proc basicRaftClusterRaftMessageSendCallbackCreateWithNetDelay[SmCommandType, SmStateType](cluster: BasicRaftCluster): RaftMessageSendCallback[SmCommandType, SmStateType] =
   proc (msg: RaftMessageBase[SmCommandType, SmStateType]): Future[RaftMessageResponseBase[SmCommandType, SmStateType]] {.async, gcsafe.} =
     await raftTimerCreate(rand(cluster.networkDelayJitter), proc()=discard)     # Simulate network delay
+    result = await cluster.nodes[msg.receiverId].raftNodeMessageDeliver(msg)
+
+proc basicRaftClusterRaftMessageSendCallbackCreate[SmCommandType, SmStateType](cluster: BasicRaftCluster): RaftMessageSendCallback[SmCommandType, SmStateType] =
+  proc (msg: RaftMessageBase[SmCommandType, SmStateType]): Future[RaftMessageResponseBase[SmCommandType, SmStateType]] {.async, gcsafe.} =
     result = await cluster.nodes[msg.receiverId].raftNodeMessageDeliver(msg)
 
 proc basicRaftClusterStart*(cluster: BasicRaftCluster) =
