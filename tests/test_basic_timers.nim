@@ -44,17 +44,16 @@ proc basicTimersMain*() =
         fastTimers[i] = raftTimerCreateCustomImpl(max(FAST_TIMERS_MIN, rand(FAST_TIMERS_MAX)), RaftDummyTimerCallback)
 
     test "Wait for and cancel 'slow' timers":
-      waitFor sleepAsync(WAIT_FOR_SLOW_TIMERS)
+      waitFor sleepAsync(milliseconds(WAIT_FOR_SLOW_TIMERS))
       for i in 0..MAX_TIMERS:
         if not slowTimers[i].finished:
           asyncSpawn cancelAndWait(slowTimers[i])
 
-    test "Final wait timers":
-      waitFor sleepAsync(FINAL_WAIT)
-
-    test "Check timers consistency":
+    test "Final wait timers and check consistency":
       var
         pass = true
+
+      waitFor sleepAsync(milliseconds(FINAL_WAIT))
 
       for i in 0..MAX_TIMERS:
         if not fastTimers[i].finished:
