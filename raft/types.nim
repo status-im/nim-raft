@@ -27,10 +27,10 @@ const
 
 type
   RaftNodeState* = enum
-    rnsUnknown = 0,
-    rnsFollower = 1,
-    rnsCandidate = 2
-    rnsLeader = 3
+    rnsError = 0,                           # Error state
+    rnsFollower = 1,                        # Follower state
+    rnsCandidate = 2                        # Candidate state
+    rnsLeader = 3                           # Leader state
 
   RaftNodeId* = UUID                        # uuid4 uniquely identifying every Raft Node
   RaftNodeTerm* = int                       # Raft Node Term Type
