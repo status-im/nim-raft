@@ -42,11 +42,11 @@ type
     mtx: RLock
     state: NonTerminalSymbol[NodeType]
     stateTransitionsLUT: StateTransitionsRulesLUT[NodeState, EventType, NodeType, RaftMessageBase]
-    logicalFunctionsLut: LogicalFunctionConditionsLUT[EventType, NodeType, RaftMessageBase]
+    logicalFunctionsLut: LogicalFunctionConditionsLUT[NodeState, EventType, NodeType, RaftMessageBase]
 
 # FSM type constructor
-proc new*[NodeType, EventType, NodeStates](T: type ConsensusFSM[NodeType, EventType, RaftMessageBase],
-          lut: StateTransitionsRulesLUT[NodeType, EventType, RaftMessageBase],
+proc new*[NodeState, EventType, NodeType, NodeStates](T: type ConsensusFSM[NodeState, EventType, NodeType, RaftMessageBase],
+          lut: StateTransitionsRulesLUT[NodeState, EventType, NodeType, RaftMessageBase],
           startSymbol: NonTerminalSymbol[NodeType]
   ): T =
   result = new(ConsensusFSM[NodeType, EventType, NodeStates])
@@ -54,8 +54,8 @@ proc new*[NodeType, EventType, NodeStates](T: type ConsensusFSM[NodeType, EventT
   result.state = startSymbol
   result.stateTransitionsLUT = lut
 
-proc computeFSMLogicFunctionsPermutationValue[NonTerminalSymbol, NodeType, EventType, RaftMessageBase](
-    fsm: ConsensusFSM[NodeType, EventType, RaftMessageBase],
+proc computeFSMLogicFunctionsPermutationValue[NonTerminalSymbol, NodeState, NodeType, EventType, RaftMessageBase](
+    fsm: ConsensusFSM[NodeState, EventType, NodeType, RaftMessageBase],
     nts: NonTerminalSymbol, rawInput: TerminalSymbol, msg: Option[RaftMessageBase]): TerminalSymbol =
   let
     e = rawInput[0]
@@ -68,7 +68,7 @@ proc computeFSMLogicFunctionsPermutationValue[NonTerminalSymbol, NodeType, Event
   rawInput[1] = logicFunctionsConds
   result = rawInput
 
-proc consensusFSMAdvance[NodeType, EventType](fsm: ConsensusFSM[NodeType, EventType, RaftMessageBase], node: NodeType, event: EventType,
+proc consensusFSMAdvance[NodeState, EventType, NodeType, RaftMessageBase](fsm: ConsensusFSM[NodeState, EventType, NodeType, RaftMessageBase], node: NodeType, event: EventType,
                          rawInput: TerminalSymbol[EventType, NodeType, RaftMessageBase], msg: Option[RaftMessageBase]): NonTerminalSymbol[NodeType] =
   withRLock():
     var
