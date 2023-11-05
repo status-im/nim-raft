@@ -28,7 +28,9 @@ type
     ClientRequestReceived,
     ClientRequestProcessed
 
-  # Define callback to use with Terminals. Node states are updated/read in-place in the node object
+  # Define callback to use with transitions. It is a function that takes a node as an argument and returns nothing.
+  # It is used to perform some action when a transition is triggered. For example, when a node becomes a leader,
+  # it should start sending heartbeats to other nodes.
   ConsensusFsmTransitionActionType*[NodeType] = proc(node: NodeType) {.gcsafe.}
 
   # Define logical functions (conditions) computed from our NodeType etc. (Truth Table)
@@ -61,7 +63,7 @@ type
 proc new*[RaftNodeState, EventType, NodeType, RaftNodeStates](
   T: type ConsensusFsm[RaftNodeState, EventType, NodeType, RaftMessageBase], startSymbol: RaftNodeState = rnsFollower): T =
 
-  result = new(ConsensusFsm[NodeType, EventType, RaftNodeStates])
+  result = ConsensusFsm[NodeType, EventType, RaftNodeStates]()
   initRLock(result.mtx)
   result.state = startSymbol
   debug "new: ", fsm=repr(result)
