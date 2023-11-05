@@ -59,19 +59,22 @@ type
 proc new*[RaftNodeState, EventType, NodeType, RaftNodeStates](
   T: type ConsensusFSM[RaftNodeState, EventType, NodeType, RaftMessageBase], startSymbol: RaftNodeState): T =
 
-  result = new(ConsensusFSM[NodeType, EventType, RaftNodeStates])
+  result = (ConsensusFSM[NodeType, EventType, RaftNodeStates])
+  result = ConsensusFSM[NodeType, EventType, RaftNodeStates].new
   initRLock(result.mtx)
   result.state = startSymbol
   debug "new: ", fsm=repr(result)
 
-proc addNewFsmTransition*[RaftNodeState, EventType, NodeType, RaftMessageBase](
+proc addFSMTransition*[RaftNodeState, EventType, NodeType, RaftMessageBase](
   fsm: ConsensusFSM[RaftNodeState, EventType, NodeType, RaftMessageBase],
   fromState: RaftNodeState,
-  toState: RaftNodeState) =
+  termSymb: TerminalSymbol[EventType, NodeType, RaftMessageBase],
+  toState: RaftNodeState,
+  action: Option[ConsensusFSMTransActionType]) =
 
-  fsm.stateTransitionsLUT[fromState.state] = (toState, none)
+  fsm.stateTransitionsLUT[(fromState.state, termSymb)] = (toState, action)
 
-proc computeFSMLogicFunctionsPermutationValue[RaftNodeState, NodeType, EventType, RaftMessageBase](
+proc computeFSMLogicFunctionsPermutationValu*[RaftNodeState, NodeType, EventType, RaftMessageBase](
   fsm: ConsensusFSM[RaftNodeState, EventType, NodeType, RaftMessageBase],
   nts: RaftNodeState,
   termSymb: TerminalSymbol,
@@ -96,7 +99,7 @@ proc computeFSMLogicFunctionsPermutationValue[RaftNodeState, NodeType, EventType
   termSymb[1] = logicFunctionsConds
   result = termSymb
 
-proc consensusFSMAdvance[RaftNodeState, EventType, NodeType, RaftMessageBase](
+proc consensusFSMAdvance*[RaftNodeState, EventType, NodeType, RaftMessageBase](
   fsm: ConsensusFSM[RaftNodeState, EventType, NodeType, RaftMessageBase],
   node: NodeType,
   event: EventType,

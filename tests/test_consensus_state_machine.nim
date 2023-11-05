@@ -12,4 +12,6 @@ import ../raft/consensus_state_machine
 
 suite "Create and test Consensus State Machine":
 
-  test 
+  test "Create Consensus State Machine":
+    let csm = ConsensusStateMachine.new()
+    check csm != nil
