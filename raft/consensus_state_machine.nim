@@ -65,7 +65,6 @@ proc new*[RaftNodeState, EventType, NodeType, RaftMessageType](
 
   result = T(mtx: RLock(), state: startSymbol)
   initRLock(result.mtx)
-  result.state = startSymbol
 
   debug "new: ", fsm=repr(result)
 
