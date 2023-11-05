@@ -8,10 +8,12 @@
 # those terms.
 
 import unittest2
+import basic_state_machine
 import ../raft/consensus_state_machine
+import ../raft/types
 
 suite "Create and test Consensus State Machine":
 
   test "Create Consensus State Machine":
-    let csm = ConsensusStateMachine.new()
+    let csm = ConsensusFsm[RaftNodeState, EventType, RaftNode[SmState, SmCommand], RaftMessageBase].new()
     check csm != nil

@@ -14,7 +14,7 @@ import chronicles
 
 type
   # Node events
-  EventType = enum
+  EventType* = enum
     VotingTimeout,
     ElectionTimeout,
     HeartbeatTimeout,
@@ -59,7 +59,7 @@ type
 
 # FSM type constructor
 proc new*[RaftNodeState, EventType, NodeType, RaftNodeStates](
-  T: type ConsensusFsm[RaftNodeState, EventType, NodeType, RaftMessageBase], startSymbol: RaftNodeState): T =
+  T: type ConsensusFsm[RaftNodeState, EventType, NodeType, RaftMessageBase], startSymbol: RaftNodeState = rnsFollower): T =
 
   result = new(ConsensusFsm[NodeType, EventType, RaftNodeStates])
   initRLock(result.mtx)
@@ -79,7 +79,7 @@ proc addFsmTransitionLogicalConditions*[RaftNodeState, EventType, NodeType, Raft
   fsm: ConsensusFsm[RaftNodeState, EventType, NodeType, RaftMessageBase],
   state: RaftNodeState,
   event: EventType,
-  logicalConditions: seq[LogicalCondition[NodeType, Option[RaftMessageBase]]]) =
+  logicalConditions: seq[LogicalCondition[NodeType, RaftMessageBase]]) =
 
   fsm.logicalFunctionsLut[(state, event)] = logicalConditions
 
