@@ -53,8 +53,8 @@ type
   ConsensusFsm*[RaftNodeState, EventType, NodeType, RaftMessageBase] = ref object
     mtx: RLock
     state: RaftNodeState
-    stateTransitionsLUT: StateTransitionsRulesLut[RaftNodeState, EventType, NodeType, RaftMessageBase]
     logicalFunctionsLut: LogicalConditionsLut[RaftNodeState, EventType, NodeType, RaftMessageBase]
+    stateTransitionsLut: StateTransitionsRulesLut[RaftNodeState, EventType, NodeType, RaftMessageBase]
 
 # FSM type constructor
 proc new*[RaftNodeState, EventType, NodeType, RaftNodeStates](
@@ -72,7 +72,7 @@ proc addFsmTransition*[RaftNodeState, EventType, NodeType, RaftMessageBase](
   toState: RaftNodeState,
   action: Option[ConsensusFsmTransActionType]) =
 
-  fsm.stateTransitionsLUT[(fromState.state, termSymb)] = (toState, action)
+  fsm.stateTransitionsLut[(fromState.state, termSymb)] = (toState, action)
 
 proc addFsmTransitionLogicalConditions*[RaftNodeState, EventType, NodeType, RaftMessageBase](
   fsm: ConsensusFsm[RaftNodeState, EventType, NodeType, RaftMessageBase],
@@ -116,7 +116,7 @@ proc fsmAdvance*[RaftNodeState, EventType, NodeType, RaftMessageBase](
   withRLock():
     var
       input = computeFsmLogicFunctionsPermutationValue(fsm, node, termSymb, msg)
-    let trans = fsm.stateTransitionsLUT[(fsm.state, input)]
+    let trans = fsm.stateTransitionsLut[(fsm.state, input)]
     let action = trans[1]
 
     fsm.state = trans[0]
