@@ -65,7 +65,7 @@ proc new*[RaftNodeState, EventType, NodeType, RaftNodeStates](
   result.state = startSymbol
   debug "new: ", fsm=repr(result)
 
-proc addFSMTransition*[RaftNodeState, EventType, NodeType, RaftMessageBase](
+proc addFsmTransition*[RaftNodeState, EventType, NodeType, RaftMessageBase](
   fsm: ConsensusFSM[RaftNodeState, EventType, NodeType, RaftMessageBase],
   fromState: RaftNodeState,
   termSymb: TerminalSymbol[EventType, NodeType, RaftMessageBase],
@@ -74,9 +74,9 @@ proc addFSMTransition*[RaftNodeState, EventType, NodeType, RaftMessageBase](
 
   fsm.stateTransitionsLUT[(fromState.state, termSymb)] = (toState, action)
 
-proc computeFSMLogicFunctionsPermutationValu*[RaftNodeState, NodeType, EventType, RaftMessageBase](
+proc computeFsmLogicFunctionsPermutationValuе*[RaftNodeState, NodeType, EventType, RaftMessageBase](
   fsm: ConsensusFSM[RaftNodeState, EventType, NodeType, RaftMessageBase],
-  nts: RaftNodeState,
+  node: NodeType,
   termSymb: TerminalSymbol,
   msg: Option[RaftMessageBase]): TerminalSymbol =
 
@@ -92,23 +92,22 @@ proc computeFSMLogicFunctionsPermutationValu*[RaftNodeState, NodeType, EventType
   debug "computeFSMLogicFunctionsPermutationValue: ", logicFunctionsConds=logicFunctionsConds
 
   for f in logicFunctionsConds:
-    logicFunctionsCondsValues.add f(nts, e, msg)
+    logicFunctionsCondsValues.add f(node, msg)
 
   debug "computeFSMLogicFunctionsPermutationValue: ", logicFunctionsCondsValues=logicFunctionsCondsValues
 
   termSymb[1] = logicFunctionsConds
   result = termSymb
 
-proc consensusFSMAdvance*[RaftNodeState, EventType, NodeType, RaftMessageBase](
+proc fsmAdvance*[RaftNodeState, EventType, NodeType, RaftMessageBase](
   fsm: ConsensusFSM[RaftNodeState, EventType, NodeType, RaftMessageBase],
   node: NodeType,
-  event: EventType,
-  rawInput: TerminalSymbol[EventType, NodeType, RaftMessageBase],
+  termSymb: TerminalSymbol[EventType, NodeType, RaftMessageBase],
   msg: Option[RaftMessageBase]): RaftNodeState =
 
   withRLock():
     var
-      input = computeFSMLogicFunctionsPermutationValue(fsm, node, event, rawInput)
+      input = computeFsmLogicFunctionsPermutationValue(fsm, node, termSymb, msg)
     let trans = fsm.stateTransitionsLUT[(fsm.state, input)]
     let action = trans[1]
 
