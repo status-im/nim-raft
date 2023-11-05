@@ -18,6 +18,7 @@ type
     VotingTimeout,
     ElectionTimeout,
     HeartbeatTimeout,
+    AppendEntriesTimeout
     HeartbeatReceived,
     HeartbeatSent,
     AppendEntriesReceived,
@@ -28,14 +29,14 @@ type
     ClientRequestProcessed
 
   # Define callback to use with Terminals. Node states are updated/read in-place in the node object
-  ConsensusFsmTransActionType*[NodeType] = proc(node: NodeType) {.gcsafe.}
+  ConsensusFsmTransitionActionType*[NodeType] = proc(node: NodeType) {.gcsafe.}
 
   # Define logical functions (conditions) computed from our NodeType etc. (Truth Table)
   LogicalConditionValueType* = bool
   LogicalCondition*[NodeTytpe, RaftMessageBase] =
-    proc(n: NodeTytpe, msg: Option[RaftMessageBase]): LogicalConditionValueType
+    proc(node: NodeTytpe, msg: Option[RaftMessageBase]): LogicalConditionValueType
   LogicalConditionsLut*[RaftNodeState, EventType, NodeType, RaftMessageBase] =
-    Table[(RaftNodeState, EventType), seq[LogicalCondition[NodeType, Option[RaftMessageBase]]]]
+    Table[(RaftNodeState, EventType), seq[LogicalCondition[NodeType, RaftMessageBase]]]
 
   # Define Terminals as a tuple of a Event and a sequence of logical functions (conditions) and their respective values computed from NodeType, NodeTytpe and RaftMessageBase
   # (kind of Truth Table)
@@ -45,8 +46,8 @@ type
   # Define State Transition Rules LUT of the form ( NonTerminal -> Terminal ) -> NonTerminal )
   # NonTerminal is a NodeState and Terminal is a TerminalSymbol - the tuple (EventType, seq[LogicalConditionValueType])
   StateTransitionsRulesLut*[RaftNodeState, EventType, NodeType, RaftMessageBase] = Table[
-    (RaftNodeState, TerminalSymbol[NodeType, EventType, Option[RaftMessageBase]]),
-    (RaftNodeState, Option[ConsensusFsmTransActionType])
+    (RaftNodeState, TerminalSymbol[NodeType, EventType, RaftMessageBase]),
+    (RaftNodeState, Option[ConsensusFsmTransitionActionType])
   ]
 
   # FSM type definition
@@ -70,7 +71,7 @@ proc addFsmTransition*[RaftNodeState, EventType, NodeType, RaftMessageBase](
   fromState: RaftNodeState,
   termSymb: TerminalSymbol[EventType, NodeType, RaftMessageBase],
   toState: RaftNodeState,
-  action: Option[ConsensusFsmTransActionType]) =
+  action: Option[ConsensusFsmTransitionActionType]) =
 
   fsm.stateTransitionsLut[(fromState.state, termSymb)] = (toState, action)
 
