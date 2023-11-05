@@ -12,10 +12,13 @@ import ../raft/types
 import basic_state_machine
 import ../raft/consensus_state_machine
 
+var
+  csm: ConsensusFsm[RaftNodeState, EventType, RaftNode[SmCommand, SmState], RaftMessageBase[SmCommand, SmState]]
+
 suite "Create and test Consensus State Machine":
 
   test "Create Consensus State Machine":
-    var
-      csm = ConsensusFsm[RaftNodeState, EventType, RaftNode[SmCommand, SmState], RaftMessageBase[SmCommand, SmState]].new(rnsFollower)
-
+    csm = ConsensusFsm[RaftNodeState, EventType, RaftNode[SmCommand, SmState], RaftMessageBase[SmCommand, SmState]].new
     check csm != nil
+
+  # test "Add state transitions / logic conditions":
