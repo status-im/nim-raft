@@ -9,16 +9,34 @@
 
 import unittest2
 import ../raft/types
-import basic_state_machine
 import ../raft/consensus_state_machine
+import std/[times]
 
-var
-  csm: ConsensusFsm[RaftNodeState, EventType, RaftNode[SmCommand, SmState], RaftMessageBase[SmCommand, SmState]]
+proc consensusstatemachineMain*() =
+  
 
-suite "Create and test Consensus State Machine":
+  suite "Basic state machine tests":
+    test "create state machine":
+      let config = RaftStateMachineConfig()
+      let sm = initRaftStateMachine(config)
+      echo sm
 
-  test "Create Consensus State Machine":
-    csm = ConsensusFsm[RaftNodeState, EventType, RaftNode[SmCommand, SmState], RaftMessageBase[SmCommand, SmState]].new
-    check csm != nil
+    test "advance empty state machine":
+      var sm =  RaftStateMachine()
+      var msg = sm.createVoteRequest()
+      sm.advance(msg ,getTime())
+      echo sm.poll()
+      echo sm.poll()
+      echo getTime()
 
-  # test "Add state transitions / logic conditions":
+    test "two machines":
+      var sm =  RaftStateMachine()
+      var sm2 = RaftStateMachine(myId: genUUID())
+      var msg = sm2.createVoteRequest()
+      sm.advance(msg ,getTime())
+      echo sm2
+      echo getTime()
+
+
+if isMainModule:
+  consensusstatemachineMain()
