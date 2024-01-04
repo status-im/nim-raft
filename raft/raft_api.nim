@@ -11,7 +11,6 @@ import types
 import protocol
 import consensus_module
 import log_ops
-import ../db/kvstore_mdbx
 import chronicles
 import std/random
 
