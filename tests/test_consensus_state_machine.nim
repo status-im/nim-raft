@@ -10,7 +10,7 @@
 import unittest2
 import ../raft/types
 import ../raft/consensus_state_machine
-import std/[times]
+import std/[times, sequtils]
 
 proc consensusstatemachineMain*() =
   
@@ -36,6 +36,38 @@ proc consensusstatemachineMain*() =
       sm.advance(msg ,getTime())
       echo sm2
       echo getTime()
+
+    test "something":
+      var arr = @[1,2,3,4,5]
+      arr.delete(3..<len(arr))
+      echo arr
+
+  suite "Entry log tests":
+    test "append entry as leadeer":
+      var log = initRaftLog()
+      log.appendAsLeader(0, 1, Command())
+      log.appendAsLeader(0, 2, Command())
+      check log.lastTerm() == 0
+      log.appendAsLeader(1, 2, Command())
+      check log.lastTerm() == 1
+    test "append entry as follower":
+      var log = initRaftLog()
+      log.appendAsFollower(0, 0, Command())
+      check log.lastTerm() == 0
+      check log.lastIndex() == 0
+      check log.entriesCount == 1
+      log.appendAsFollower(0, 1, Command())
+      check log.lastTerm() == 0
+      check log.lastIndex() == 1
+      check log.entriesCount == 2
+      log.appendAsFollower(1, 1, Command())
+      check log.lastTerm() == 1
+      check log.lastIndex() == 1
+      check log.entriesCount == 2
+      log.appendAsFollower(2, 0, Command())
+      check log.lastTerm() == 2
+      check log.lastIndex() == 0
+      check log.entriesCount == 1
 
 
 if isMainModule:

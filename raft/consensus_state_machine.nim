@@ -9,6 +9,7 @@
 
 import types
 import std/[times]
+import std/sequtils
 
 type
   RaftRpcMessageType* = enum
@@ -20,6 +21,9 @@ type
 
   RaftRpcAppendRequest* = object
     previousTerm: RaftNodeTerm
+    previousLogIndex: RaftLogIndex
+    commitIndex: RaftLogIndex
+    entry: LogEntry
     
   RaftRpcAppendReplay* = object
 
@@ -28,6 +32,7 @@ type
   RaftRpcVoteReplay* = object
   
   LeaderState* = object
+    followersProgress: seq[RaftFollowerProgressTracker]
 
   CandidateState* = object
     votes: seq[RaftNodeId]
@@ -38,6 +43,7 @@ type
   RaftRpcMessage* = object
     currentTerm: RaftNodeTerm
     sender: RaftNodeId
+    receiver: RaftNodeId
     case kind: RaftRpcMessageType
     of Vote: voteRequest: RaftRpcVoteRequest
     of VoteReplay: voteReplay: RaftRpcVoteReplay
@@ -54,7 +60,7 @@ type
 
   RaftLog* = object
     logEntries: seq[LogEntry]
-
+  
   RaftStateMachineOutput* = object
     logEntries: seq[LogEntry]
     # Entries that should be applyed to the "User" State machine
@@ -77,12 +83,88 @@ type
 
   RaftStateMachineConfig* = object
 
-func append(rf: var RaftLog, entry: LogEntry) = 
+  RaftFollowerProgressTracker* = object
+    id: RaftNodeId
+    nextIndex: RaftLogIndex
+    matchIndex: RaftLogIndex
+    commitIndex: RaftLogIndex
+    replayedIndex: RaftLogIndex
+
+func initFollowerProgressTracker*(follower: RaftNodeId, nextIndex: RaftLogIndex): RaftFollowerProgressTracker =
+  return RaftFollowerProgressTracker(id: follower, nextIndex: nextIndex, matchIndex: 0, commitIndex: 0, replayedIndex: 0)
+
+func accepted*(fpt: var RaftFollowerProgressTracker, index: RaftLogIndex)=
+  fpt.matchIndex = max(fpt.matchIndex, index)
+  fpt.nextIndex = max(fpt.nextIndex, index)
+
+func initRaftLog*(): RaftLog =
+  return RaftLog()
+
+func lastTerm*(rf: RaftLog): RaftNodeTerm =
+  # Not sure if it's ok, maybe we should return optional value
+  if len(rf.logEntries) == 0:
+    return 0
+  let idx = len(rf.logEntries) 
+  return rf.logEntries[idx - 1].term
+
+func entriesCount*(rf: RaftLog): int =
+  return len(rf.logEntries)
+
+func lastIndex*(rf: RaftLog): RaftNodeTerm =
+  # Not sure if it's ok, maybe we should return optional value
+  if len(rf.logEntries) == 0:
+    return 0
+  let idx = len(rf.logEntries) 
+  return rf.logEntries[idx - 1].index
+
+func truncateUncomitted*(rf: var RaftLog, index: RaftLogIndex) =
+  # TODO: We should add support for configurations and snapshots
+  rf.logEntries.delete(index..<len(rf.logEntries))
+  
+
+func getEntryByIndex(rf: RaftLog, index: RaftLogIndex): LogEntry = 
+  return rf.logEntries[index]
+
+func appendAsLeader(rf: var RaftLog, entry: LogEntry) = 
   rf.logEntries.add(entry)
+
+func appendAsFollower*(rf: var RaftLog, entry: LogEntry) = 
+  let currentIdx = rf.lastIndex()
+  if entry.index <= currentIdx:
+    # TODO: The indexing hold only if we keep all entries in memory
+    # we should change it when we add support for snapshots
+    if len(rf.logEntries) > 0 and entry.term != rf.logEntries[entry.index].term:
+      rf.truncateUncomitted(entry.index)
+  rf.logEntries.add(entry)
+
+func appendAsLeader*(rf: var RaftLog, term: RaftNodeTerm, index: RaftLogIndex, data: Command) = 
+  rf.appendAsLeader(LogEntry(term: term, index: index, data: data))
+
+
+func appendAsFollower*(rf: var RaftLog, term: RaftNodeTerm, index: RaftLogIndex, data: Command) = 
+  rf.appendAsFollower(LogEntry(term: term, index: index, data: data))
+
+
+func matchTerm*(rf: RaftLog, index: RaftLogIndex, term: RaftNodeTerm): bool = 
+  if len(rf.logEntries) == 0:
+    return true
+  # TODO: We should add support for snapshots
+  if index > len(rf.logEntries):
+    # The follower doesn't have all etries
+    return false
+
+  if rf.logEntries[index].term == term:
+    return true
+  else:
+    return false
+
+func termForIndex*(rf: RaftLog, index: RaftLogIndex): RaftNodeTerm =
+  # TODO: We should add support for snapshots
+  return rf.logEntries[index].term
 
 func debug*(sm: var RaftStateMachine, log: string) = 
   sm.output.debugLogs.add(log)
-    
+
 func initRaftStateMachine*(config: RaftStateMachineConfig): RaftStateMachine = 
   var st =  RaftStateMachine()
   st.term = 0
@@ -90,9 +172,32 @@ func initRaftStateMachine*(config: RaftStateMachineConfig): RaftStateMachine =
   st.state = RaftNodeState.rnsFollower
   return st
 
+func sendTo*(sm: var RaftStateMachine, id: RaftNodeId, request: RaftRpcAppendRequest) =
+  sm.output.messages.add(RaftRpcMessage(currentTerm: sm.term, receiver: id, sender: sm.myId, kind: Append, appendRequest: request))
+
 
 func createVoteRequest*(sm: var RaftStateMachine): RaftRpcMessage = 
   return RaftRpcMessage(currentTerm: sm.term, sender: sm.myId, kind: Vote, voteRequest: RaftRpcVoteRequest())
+
+func replicateTo*(sm: var RaftStateMachine, follower: var RaftFollowerProgressTracker) =
+  if follower.nextIndex > sm.log.lastIndex():
+    return
+    
+  let request = RaftRpcAppendRequest(
+    previousTerm: follower.nextIndex - 1,
+    previousLogIndex: sm.log.termForIndex(follower.nextIndex - 1),
+    commitIndex: sm.commitIndex,
+    entry: sm.log.getEntryByIndex(follower.nextIndex))
+  follower.nextIndex += 1
+
+  sm.sendTo(follower.id, request)
+
+func replicate*(sm: var RaftStateMachine) =
+  if sm.state == RaftNodeState.rnsLeader:
+    for followerIndex in 0..sm.leader.followersProgress.len:
+      if sm.myId != sm.leader.followersProgress[followerIndex].id:
+        sm.replicateTo(sm.leader.followersProgress[followerIndex])
+ 
 
 func advance*(sm: var RaftStateMachine, msg: RaftRpcMessage,currentTime: Time) =
   if sm.term > msg.currentTerm:
@@ -118,10 +223,23 @@ func advance*(sm: var RaftStateMachine, msg: RaftRpcMessage,currentTime: Time) =
 func addEntry*(sm: var RaftStateMachine, entry: LogEntry) =
   if sm.state != RaftNodeState.rnsLeader:
     sm.debug "Error: only the leader can handle new entries"
-  sm.log.append(entry)
+  sm.log.appendAsLeader(entry)
+
+
+func tick* (sm: var RaftStateMachine) =
+  sm.debug "TODO:implement tick"
+  # TODO: here we should keep track of the replications progress
 
 func poll*(sm: var RaftStateMachine):  RaftStateMachineOutput =
   # Should initiate replication if we have new entries
+  if sm.state == RaftNodeState.rnsLeader:
+    sm.replicate()
   let output = sm.output
   sm.output = RaftStateMachineOutput()
   return output
+
+
+func commit*(sm: var RaftStateMachine) =
+  if sm.state != RaftNodeState.rnsLeader
+    return
+  
