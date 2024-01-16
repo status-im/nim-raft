@@ -11,14 +11,23 @@ import unittest2
 import ../raft/types
 import ../raft/consensus_state_machine
 import std/[times, sequtils]
+import uuids
+
+func configWith3Nodes(): RaftConfig =
+  var config = RaftConfig()
+  config.currentSet.add(RaftnodeId(parseUUID("a8409b39-f17b-4682-aaef-a19cc9f356fb")))
+  config.currentSet.add(RaftnodeId(parseUUID("2a98fc33-6559-44c0-b130-fc3e9df80a69")))
+  config.currentSet.add(RaftnodeId(parseUUID("9156756d-697f-4ffa-9b82-0c86720344bd")))
+  return config
 
 proc consensusstatemachineMain*() =
   
 
   suite "Basic state machine tests":
     test "create state machine":
-      let config = RaftStateMachineConfig()
-      let sm = initRaftStateMachine(config)
+      var config = configWith3Nodes()
+      var log = initRaftLog()
+      let sm = initRaftStateMachine(config.currentSet[0], 0, log, 0, config)
       echo sm
 
     test "advance empty state machine":
@@ -68,6 +77,7 @@ proc consensusstatemachineMain*() =
       check log.lastTerm() == 2
       check log.lastIndex() == 0
       check log.entriesCount == 1
+
 
 
 if isMainModule:
