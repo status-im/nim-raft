@@ -9,6 +9,7 @@
 
 import
   raft/raft_api
-
+import raft/consensus_state_machine
 export
-  raft_api
+  raft_api,
+  consensus_state_machine
