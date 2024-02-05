@@ -201,7 +201,7 @@ proc consensusstatemachineMain*() =
       check output.committed.len == 0
       check output.messages.len == 0
       check sm.state.isFollower
-      timeNow +=  300.milliseconds
+      timeNow +=  500.milliseconds
       sm.tick(timeNow)
       output = sm.poll()
       check output.logEntries.len == 0
@@ -216,7 +216,7 @@ proc consensusstatemachineMain*() =
       var log = initRaftLog(1)
       var sm = initRaftStateMachine(test_ids_1[0], 0, log, 0, config, timeNow)
       check sm.state.isFollower
-      timeNow +=  300.milliseconds
+      timeNow +=  1000.milliseconds
       sm.tick(timeNow)
       var output = sm.poll()
       check output.logEntries.len == 0
@@ -238,7 +238,7 @@ proc consensusstatemachineMain*() =
       var timeNow = times.now()
       var sm = initRaftStateMachine(test_ids_1[0], 0, log, 0, config, timeNow)
       check sm.state.isFollower
-      timeNow += 301.milliseconds
+      timeNow += 601.milliseconds
       sm.tick(timeNow)
       check sm.state.isCandidate
       var output = sm.poll()
@@ -330,7 +330,7 @@ proc consensusstatemachineMain*() =
         var timeNow = times.now()
         var sm = initRaftStateMachine(test_ids_1[0], 0, log, 0, config, timeNow)
         check sm.state.isFollower
-        timeNow += 301.milliseconds
+        timeNow += 501.milliseconds
         sm.tick(timeNow)
         check sm.state.isCandidate
         var output = sm.poll()
@@ -363,7 +363,7 @@ proc consensusstatemachineMain*() =
       var cluster = createCluster(test_ids_3, times.now())
       var timeNow = times.now()
       var leader: RaftnodeId
-      for i in 0..<500:
+      for i in 0..<105:
         timeNow += 5.milliseconds
         cluster.advance(timeNow)
         var maybeLeader = cluster.getLeader()
