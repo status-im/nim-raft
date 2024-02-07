@@ -8,9 +8,13 @@
 # those terms.
 
 import types
+import log
+import tracker
+
 import std/[times]
 import std/sequtils
 import std/random
+
 
 randomize()
 
@@ -24,17 +28,6 @@ type
   RaftRpcCode* = enum
     Rejected = 0,
     Accepted = 1
-
-  RaftElectionResult* = enum
-    Unknown = 0,
-    Won = 1,
-    Lost = 2
-
-  RaftLogEntryType* = enum
-    rletCommand = 0,
-    rletConfig = 1,
-    rletEmpty = 2
-
 
   RaftRpcAppendRequest* = object
     previousTerm*: RaftNodeTerm
@@ -72,15 +65,6 @@ type
   LeaderState* = object
     tracker: RaftTracker
 
-  RaftElectionTracker* = object
-    all: seq[RaftNodeId]
-    responded: seq[RaftNodeId]
-    granted: int
-
-  RaftVotes* = object
-    voters: seq[RaftNodeId]
-    current: RaftElectionTracker
-
   CandidateState* = object
     votes: RaftVotes
     isPrevote: bool
@@ -98,24 +82,6 @@ type
     of Append: appendRequest*: RaftRpcAppendRequest
     of AppendReplay: appendReplay*: RaftRpcAppendReplay 
 
-  Command* = object
-    data: seq[byte]
-  Config* = object
-  Empty* = object
-
-  LogEntry* = object         # Abstarct Raft Node Log entry containing opaque binary data (Blob etc.)
-    term*: RaftNodeTerm
-    index*: RaftLogIndex
-    # TODO: Add configuration too
-    case kind*: RaftLogEntryType:
-    of rletCommand: command*: Command
-    of rletConfig: config*: Config
-    of rletEmpty: empty*: bool
-
-  RaftLog* = object
-    logEntries: seq[LogEntry]
-    firstIndex: RaftLogIndex
-  
   RaftStateMachineOutput* = object
     logEntries*: seq[LogEntry]
     # Entries that should be applyed to the "User" State machine
@@ -125,9 +91,6 @@ type
     term*: RaftNodeTerm
     votedFor*: Option[RaftNodeId]
     stateChange*: bool
-
-  RaftConfig* = object
-    currentSet*: seq[RaftNodeId]
 
   RaftStateMachineState* = object
     case state: RaftNodeState
@@ -157,20 +120,6 @@ type
 
     state*: RaftStateMachineState
 
-  RaftFollowerProgress = seq[RaftFollowerProgressTracker]
-
-  RaftTracker* = object
-    progress: RaftFollowerProgress
-    current: seq[RaftNodeId]
-  
-  RaftFollowerProgressTracker* = ref object
-    id: RaftNodeId
-    nextIndex: RaftLogIndex
-    # Index of the highest log entry known to be replicated to this server.
-    matchIndex: RaftLogIndex
-    commitIndex: RaftLogIndex
-    replayedIndex: RaftLogIndex
-    lastMessageAt: times.DateTime
 
 func isLeader*(s: RaftStateMachineState): bool =
   return s.state == RaftNodeState.rnsLeader
@@ -190,28 +139,6 @@ func follower*(s: var RaftStateMachineState): var FollowerState =
 func candidate*(s: var RaftStateMachineState): var CandidateState =
   return s.candidate
 
-func find(ls: RaftTracker, id: RaftnodeId): RaftFollowerProgressTracker =
-  for follower in ls.progress:
-    if follower.id == id:
-      return follower
-
-
-func initFollowerProgressTracker*(follower: RaftNodeId, nextIndex: RaftLogIndex, now: times.DateTime): RaftFollowerProgressTracker =
-  return RaftFollowerProgressTracker(id: follower, nextIndex: nextIndex, matchIndex: 0, commitIndex: 0, replayedIndex: 0, lastMessageAt: now)
-
-func accepted*(fpt: var RaftFollowerProgressTracker, index: RaftLogIndex)=
-  fpt.matchIndex = max(fpt.matchIndex, index)
-  fpt.nextIndex = max(fpt.nextIndex, index)
-
-func initTracker(config: RaftConfig, nextIndex: RaftLogIndex, now: times.DateTime): RaftTracker =
-  var tracker = RaftTracker()
-  
-  for node in config.currentSet:
-    tracker.progress.add(initFollowerProgressTracker(node, nextIndex, now))
-    tracker.current.add(node)
-  return tracker
-
-
 func leader*(sm: var RaftStateMachine): var LeaderState =
   return sm.state.leader
 
@@ -220,137 +147,6 @@ func follower*(sm: var RaftStateMachine): var FollowerState =
 
 func candidate*(sm: var RaftStateMachine): var CandidateState =
   return sm.state.candidate
-
-
-func contains(a: seq[RaftNodeId], id: RaftNodeId): bool =
-  var found = false
-  for n in a:
-    if n == id:
-      found = true
-      break
-  return found
-
-func initElectionTracker*(nodes: seq[RaftNodeId]): RaftElectionTracker =
-  var r = RaftElectionTracker()
-  r.all = nodes
-  r.granted = 0
-  return r
-
-func registerVote*(ret: var RaftElectionTracker, nodeId: RaftNodeId, granted: bool): bool =
-  if not ret.all.contains nodeId:
-    return false
-
-  if not ret.responded.contains nodeId:
-    ret.responded.add(nodeId)
-    if granted:
-      ret.granted += 1
-  
-  return true
-
-func tallyVote*(ret: var RaftElectionTracker): RaftElectionResult =
-  let quorym = int(len(ret.all) / 2) + 1
-  if ret.granted >= quorym:
-    return RaftElectionResult.Won
-  let unkown = len(ret.all) - len(ret.responded)
-  if  ret.granted + unkown >= quorym:
-    return RaftElectionResult.Unknown
-  else:
-    return RaftElectionResult.Lost
-
-func initVotes*(nodes: seq[RaftNodeId]): RaftVotes =
-  var r = RaftVotes(voters: nodes, current: initElectionTracker(nodes))
-  return r
-
-func initVotes*(config: RaftConfig): RaftVotes =
-  var r = RaftVotes(voters: config.currentSet, current: initElectionTracker(config.currentSet))
-  return r
-
-func registerVote*(rv: var RaftVotes, nodeId: RaftNodeId, granted: bool): bool =
-  # TODO: Add support for configuration
-  return rv.current.registerVote(nodeId, granted)
-
-func tallyVote*(rv: var RaftVotes): RaftElectionResult =
-  # TODO: Add support for configuration
-  return rv.current.tallyVote()
-
-func initRaftLog*(firstIndex: RaftLogIndex): RaftLog =
-  var log = RaftLog()
-  assert firstIndex > 0
-  log.firstIndex = firstIndex
-  return log
-
-func lastTerm*(rf: RaftLog): RaftNodeTerm =
-  # Not sure if it's ok, maybe we should return optional value
-  let size = rf.logEntries.len
-  if size == 0:
-    return 0
-  return rf.logEntries[size - 1].term
-
-func entriesCount*(rf: RaftLog): int =
-  return rf.logEntries.len
-
-func lastIndex*(rf: RaftLog): RaftNodeTerm =
-  return rf.logEntries.len + rf.firstIndex - 1
-
-func nextIndex*(rf: RaftLog): int =
-  return rf.lastIndex + 1
-
-func truncateUncomitted*(rf: var RaftLog, index: RaftLogIndex) =
-  # TODO: We should add support for configurations and snapshots
-  if rf.logEntries.len == 0:
-    return
-  rf.logEntries.delete((index - rf.firstIndex)..<len(rf.logEntries))
-
-func isUpToDate(rf: RaftLog, index: RaftLogIndex, term: RaftNodeTerm): bool = 
-  return term > rf.lastTerm or (term == rf.lastTerm and index >= rf.lastIndex)
-
-func getEntryByIndex(rf: RaftLog, index: RaftLogIndex): LogEntry = 
-  return rf.logEntries[index - rf.firstIndex]
-
-func appendAsLeader(rf: var RaftLog, entry: LogEntry) = 
-  rf.logEntries.add(entry)
-
-func appendAsFollower*(rf: var RaftLog, entry: LogEntry) = 
-  assert entry.index > 0
-  let currentIdx = rf.lastIndex
-  if entry.index <= currentIdx:
-    # TODO: The indexing hold only if we keep all entries in memory
-    # we should change it when we add support for snapshots
-    
-    if entry.index >= rf.firstIndex or entry.term != rf.getEntryByIndex(entry.index).term:
-      rf.truncateUncomitted(entry.index)
-  rf.logEntries.add(entry)
-
-func appendAsLeader*(rf: var RaftLog, term: RaftNodeTerm, index: RaftLogIndex, data: Command) = 
-  rf.appendAsLeader(LogEntry(term: term, index: index, kind: rletCommand,  command: data))
-
-func appendAsLeader*(rf: var RaftLog, term: RaftNodeTerm, index: RaftLogIndex, empty: bool) = 
-  rf.appendAsLeader(LogEntry(term: term, index: index, kind: rletEmpty, empty: true))
-
-func appendAsFollower*(rf: var RaftLog, term: RaftNodeTerm, index: RaftLogIndex, data: Command) = 
-  rf.appendAsFollower(LogEntry(term: term, index: index, kind: rletCommand,  command: data))
-
-
-func matchTerm*(rf: RaftLog, index: RaftLogIndex, term: RaftNodeTerm): (bool, RaftNodeTerm) = 
-  if len(rf.logEntries) == 0:
-    return (true, 0)
-  # TODO: We should add support for snapshots
-  if index > len(rf.logEntries):
-    # The follower doesn't have all etries
-    return (false, 0)
-
-  let i = index - rf.firstIndex
-  if rf.logEntries[i].term == term:
-    return (true, 0)
-  else:
-    return (false, rf.logEntries[i].term)
-
-func termForIndex*(rf: RaftLog, index: RaftLogIndex): Option[RaftNodeTerm] =
-  # TODO: snapshot support
-  assert rf.logEntries.len > index 
-  if rf.logEntries.len > 0 and index >= rf.firstIndex:
-    return some(rf.logEntries[index].term)
-  return none(RaftNodeTerm)
 
 func debug*(sm: var RaftStateMachine, log: string) = 
   sm.output.debugLogs.add("[" & $(sm.timeNow - sm.startTime).inMilliseconds & "ms] [" & (($sm.myId)[0..7]) & "...] [" & $sm.state.state & "]: " & log)
@@ -377,10 +173,7 @@ proc initRaftStateMachine*(id: RaftnodeId, currentTerm: RaftNodeTerm, log: RaftL
 
 
 func findFollowerProggressById(sm: var RaftStateMachine, id: RaftNodeId): Option[RaftFollowerProgressTracker] =
-  for follower in sm.leader.tracker.progress:
-    if follower.id == id:
-      return some(follower)
-  return none(RaftFollowerProgressTracker)
+  return sm.leader.tracker.find(id)
 
 func sendToImpl*(sm: var RaftStateMachine, id: RaftNodeId, request: RaftRpcAppendRequest) =
   sm.output.messages.add(RaftRpcMessage(currentTerm: sm.term, receiver: id, sender: sm.myId, kind: RaftRpcMessageType.Append, appendRequest: request))
@@ -570,15 +363,13 @@ func commit*(sm: var RaftStateMachine) =
       sm.commitIndex += next_index;
       next_index += 1
     else:
-      break
+      break 
 
-    
-
-func appendEntryReplay*(sm: var RaftStateMachine, from_id: RaftNodeId, replay: RaftRpcAppendReplay) =
+func appendEntryReplay*(sm: var RaftStateMachine, fromId: RaftNodeId, replay: RaftRpcAppendReplay) =
   if not sm.state.isLeader:
     sm.debug "You can't append append replay to the follower"
     return
-  var follower = sm.findFollowerProggressById(from_id)
+  var follower = sm.findFollowerProggressById(fromId)
   if not follower.isSome:
     sm.debug "Can't find the follower"
     return
@@ -586,7 +377,7 @@ func appendEntryReplay*(sm: var RaftStateMachine, from_id: RaftNodeId, replay: R
   case replay.result:
     of RaftRpcCode.Accepted:
       let lastIndex = replay.accepted.lastNewIndex
-      sm.debug "Accpeted" & $from_id & " " & $lastIndex
+      sm.debug "Accpeted" & $fromId & " " & $lastIndex
       follower.get().accepted(lastIndex)
       # TODO: add leader stepping down logic here
       sm.commit()
@@ -598,7 +389,7 @@ func appendEntryReplay*(sm: var RaftStateMachine, from_id: RaftNodeId, replay: R
         follower.get().next_index = min(replay.rejected.nonMatchingIndex, replay.rejected.lastIdx + 1)
   # if commit apply configuration that removes current follower 
   # we should take it again
-  var follower2 = sm.findFollowerProggressById(from_id)
+  var follower2 = sm.findFollowerProggressById(fromId)
   if follower2.isSome:
     sm.replicateTo(follower2.get())
 

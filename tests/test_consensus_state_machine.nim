@@ -10,6 +10,8 @@
 import unittest2
 import ../raft/types
 import ../raft/consensus_state_machine
+import ../raft/log
+import ../raft/tracker
 import std/[times, sequtils]
 import uuids
 import tables

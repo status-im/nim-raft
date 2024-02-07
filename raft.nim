@@ -7,9 +7,7 @@
 # This file may not be copied, modified, or distributed except according to
 # those terms.
 
-import
-  raft/raft_api
 import raft/consensus_state_machine
-export
-  raft_api,
-  consensus_state_machine
+import raft/types
+export consensus_state_machine
+export types
