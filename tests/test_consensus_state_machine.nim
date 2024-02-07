@@ -238,7 +238,7 @@ proc consensusstatemachineMain*() =
 
       timeNow += 1.milliseconds
       block:
-        let voteRaplay = RaftRpcVoteReplay(currentTerm: output.term, voteGranted: true, isPrevote: false)
+        let voteRaplay = RaftRpcVoteReplay(currentTerm: output.term, voteGranted: true)
         let msg = RaftRpcMessage(currentTerm: output.term, sender: id2, receiver:id1, kind: RaftRpcMessageType.VoteReplay, voteReplay: voteRaplay)
         check sm.state.isCandidate
         sm.advance(msg, timeNow)
@@ -250,7 +250,7 @@ proc consensusstatemachineMain*() =
 
       # Older messages should be ignored
       block:
-        let voteRaplay = RaftRpcVoteReplay(currentTerm: (output.term - 1), voteGranted: true, isPrevote: false)
+        let voteRaplay = RaftRpcVoteReplay(currentTerm: (output.term - 1), voteGranted: true)
         let msg = RaftRpcMessage(currentTerm: output.term, sender: id2, receiver:id1, kind: RaftRpcMessageType.VoteReplay, voteReplay: voteRaplay)
         sm.advance(msg, timeNow)
         output = sm.poll()
@@ -269,7 +269,7 @@ proc consensusstatemachineMain*() =
         output = sm.poll()
         let entry = LogEntry(term: (output.term + 1), index: 101, kind: RaftLogEntryType.rletEmpty, empty: true)
         let appendRequest = RaftRpcAppendRequest(previousTerm: (output.term + 1), previousLogIndex: 100, commitIndex: 99, entries: @[entry])
-        let msg = RaftRpcMessage(currentTerm: (output.term + 1), sender: id2, receiver:id1, kind: RaftRpcMessageType.Append, appendRequest: appendRequest)
+        let msg = RaftRpcMessage(currentTerm: (output.term + 1), sender: id2, receiver:id1, kind: RaftRpcMessageType.AppendRequest, appendRequest: appendRequest)
         sm.advance(msg, timeNow)
         output = sm.poll()
         check output.stateChange == true
@@ -292,7 +292,7 @@ proc consensusstatemachineMain*() =
         check output.votedFor.get() == mainNodeId
         timeNow += 1.milliseconds
         block:
-          let voteRaplay = RaftRpcVoteReplay(currentTerm: output.term, voteGranted: false, isPrevote: false)
+          let voteRaplay = RaftRpcVoteReplay(currentTerm: output.term, voteGranted: false)
           let msg = RaftRpcMessage(currentTerm: output.term, sender: id2, receiver:mainNodeId, kind: RaftRpcMessageType.VoteReplay, voteReplay: voteRaplay)
           check sm.state.isCandidate
           sm.advance(msg, timeNow)
@@ -302,7 +302,7 @@ proc consensusstatemachineMain*() =
 
         timeNow += 1.milliseconds
         block:
-          let voteRaplay = RaftRpcVoteReplay(currentTerm: output.term, voteGranted: false, isPrevote: false)
+          let voteRaplay = RaftRpcVoteReplay(currentTerm: output.term, voteGranted: false)
           let msg = RaftRpcMessage(currentTerm: output.term, sender: id3, receiver:mainNodeId, kind: RaftRpcMessageType.VoteReplay, voteReplay: voteRaplay)
           check sm.state.isCandidate
           sm.advance(msg, timeNow)
@@ -329,7 +329,7 @@ proc consensusstatemachineMain*() =
         check output.votedFor.get() == mainNodeId
         timeNow += 1.milliseconds
         block:
-          let voteRaplay = RaftRpcVoteReplay(currentTerm: output.term, voteGranted: false, isPrevote: false)
+          let voteRaplay = RaftRpcVoteReplay(currentTerm: output.term, voteGranted: false)
           let msg = RaftRpcMessage(currentTerm: output.term, sender: id2, receiver:mainNodeId, kind: RaftRpcMessageType.VoteReplay, voteReplay: voteRaplay)
           check sm.state.isCandidate
           sm.advance(msg, timeNow)
@@ -339,7 +339,7 @@ proc consensusstatemachineMain*() =
 
         timeNow += 1.milliseconds
         block:
-          let voteRaplay = RaftRpcVoteReplay(currentTerm: output.term, voteGranted: true, isPrevote: false)
+          let voteRaplay = RaftRpcVoteReplay(currentTerm: output.term, voteGranted: true)
           let msg = RaftRpcMessage(currentTerm: output.term, sender: id3, receiver:mainNodeId, kind: RaftRpcMessageType.VoteReplay, voteReplay: voteRaplay)
           check sm.state.isCandidate
           sm.advance(msg, timeNow)

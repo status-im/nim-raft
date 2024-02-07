@@ -67,7 +67,6 @@ func appendAsFollower*(rf: var RaftLog, entry: LogEntry) =
   if entry.index <= currentIdx:
     # TODO: The indexing hold only if we keep all entries in memory
     # we should change it when we add support for snapshots
-    
     if entry.index >= rf.firstIndex or entry.term != rf.getEntryByIndex(entry.index).term:
       rf.truncateUncomitted(entry.index)
   rf.logEntries.add(entry)
