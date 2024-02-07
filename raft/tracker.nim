@@ -76,7 +76,6 @@ func tallyVote*(rv: var RaftVotes): RaftElectionResult =
   # TODO: Add support for configuration
   return rv.current.tallyVote()
 
-
 func find*(ls: RaftTracker, id: RaftnodeId): Option[RaftFollowerProgressTracker] =
   for follower in ls.progress:
     if follower.id == id:

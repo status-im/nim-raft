@@ -26,11 +26,6 @@ const
   DefaultUUID* = initUUID(0, 0)             # 00000000-0000-0000-0000-000000000000
 
 type
-  RaftNodeState* = enum
-    rnsFollower = 0,                        # Follower state
-    rnsCandidate = 1                        # Candidate state
-    rnsLeader = 2                           # Leader state
-
   RaftNodeId* = UUID                        # uuid4 uniquely identifying every Raft Node
   RaftNodeTerm* = int                       # Raft Node Term Type
   RaftLogIndex* = int                       # Raft Node Log Index Type

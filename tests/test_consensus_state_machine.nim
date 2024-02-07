@@ -12,6 +12,7 @@ import ../raft/types
 import ../raft/consensus_state_machine
 import ../raft/log
 import ../raft/tracker
+import ../raft/state
 import std/[times, sequtils]
 import uuids
 import tables
@@ -57,16 +58,13 @@ proc advance(tc: var TestCluster, now: times.DateTime) =
         #echo "rpc:" & $msg
         tc.nodes[msg.receiver].advance(msg, now)
     
-
 func getLeader(tc: TestCluster): Option[RaftStateMachine] = 
   for id, node in tc.nodes:
     if node.state.isLeader:
       return some(node)
   return none(RaftStateMachine)
   
-
 proc consensusstatemachineMain*() =
-  
 
   suite "Basic state machine tests":
     test "create state machine":
@@ -366,7 +364,6 @@ proc consensusstatemachineMain*() =
             check leader == maybeLeader.get().myId
           else:
             check false
-
 
 if isMainModule:
   consensusstatemachineMain()
