@@ -395,7 +395,7 @@ func sendToImpl*(sm: var RaftStateMachine, id: RaftNodeId, request: RaftRpcVoteR
   sm.output.messages.add(RaftRpcMessage(currentTerm: sm.term, receiver: id, sender: sm.myId, kind: RaftRpcMessageType.VoteReplay, voteReplay: request))
 
 func sendTo[MsgType](sm: var RaftStateMachine, id: RaftNodeId, request: MsgType) =
-  sm.debug "Sent to" & $id & $ request
+  sm.debug "Sent to" & $id & $request
   if sm.state.isLeader:
     var follower = sm.findFollowerProggressById(id)
     if follower.isSome:

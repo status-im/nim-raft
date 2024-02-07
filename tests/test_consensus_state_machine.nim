@@ -49,10 +49,10 @@ proc advance(tc: var TestCluster, now: times.DateTime) =
   for id, node in tc.nodes:
     tc.nodes[id].tick(now)
     var output = tc.nodes[id].poll()
-    for msg in output.debugLogs:
-      echo $msg
+    # for msg in output.debugLogs:
+    #   echo $msg
     for msg in output.messages:
-        echo "rpc:" & $msg
+        #echo "rpc:" & $msg
         tc.nodes[msg.receiver].advance(msg, now)
     
 
@@ -71,26 +71,15 @@ proc consensusstatemachineMain*() =
       var cluster = createCluster(test_ids_1, times.now())
       echo cluster
 
-    test "advance empty state machine":
-      var sm =  RaftStateMachine()
-      var msg = sm.createVoteRequest()
-      sm.advance(msg, times.now())
+    test "tick empty state machine":
+      var timeNow = times.now()
+      var config = createConfigFromIds(test_ids_1)
+      var log = initRaftLog(1)
+      var sm = initRaftStateMachine(test_ids_1[0], 0, log, 0, config, timeNow)
+      sm.tick(times.now())
       echo sm.poll()
       echo sm.poll()
       echo getTime()
-
-    test "two machines":
-      var sm =  RaftStateMachine()
-      var sm2 = RaftStateMachine(myId: genUUID())
-      var msg = sm2.createVoteRequest()
-      sm.advance(msg, times.now())
-      echo sm2
-      echo getTime()
-
-    test "something":
-      var arr = @[1,2,3,4,5]
-      arr.delete(3..<len(arr))
-      echo arr
 
   suite "Entry log tests":
     test "append entry as leadeer":
@@ -293,7 +282,7 @@ proc consensusstatemachineMain*() =
         var timeNow = times.now()
         var sm = initRaftStateMachine(test_ids_1[0], 0, log, 0, config, timeNow)
         check sm.state.isFollower
-        timeNow += 301.milliseconds
+        timeNow += 501.milliseconds
         sm.tick(timeNow)
         check sm.state.isCandidate
         var output = sm.poll()
