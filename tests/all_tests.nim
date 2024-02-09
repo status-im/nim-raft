@@ -6,3 +6,10 @@
 # at your option.
 # This file may not be copied, modified, or distributed except according to
 # those terms.
+
+import ../misc/test_macro
+
+{. warning[UnusedImport]:off .}
+
+cliBuilder:
+  import  ./test_consensus_state_machine
