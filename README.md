@@ -20,4 +20,4 @@ It will ensure better testability and integrability.
 
 # Run test
 
-`./run_all_tests.sh`
+`nimble test`

@@ -167,5 +167,4 @@ jobs:
           fi
           nim --version
           nimble --version
-          nimble build
           nimble test

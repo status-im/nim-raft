@@ -1,0 +1,8 @@
+{
+    "nim.provider": "lsp",
+    "nim.projectMapping": [{
+        // everything else - use main.nim as root.
+        "projectFile": "raft.nim",
+        "fileRegex": ".*\\.nim"
+    }]
+}
