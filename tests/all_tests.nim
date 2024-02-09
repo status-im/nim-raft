@@ -6,3 +6,7 @@
 # at your option.
 # This file may not be copied, modified, or distributed except according to
 # those terms.
+
+
+import  test_consensus_state_machine
+export test_consensus_state_machine

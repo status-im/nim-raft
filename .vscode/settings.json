@@ -1,0 +1,7 @@
+{
+    "nim.projectMapping": [{
+            "projectFile": "raft.nim",
+            "fileRegex": ".*\\.nim"
+        }
+    ]
+}

@@ -16,12 +16,12 @@ description   = "raft consensus in nim"
 license       = "Apache License 2.0"
 skipDirs      = @["tests"]
 
-requires "nim >= 1.6.0"
+requires "nim >= 1.6.14"
 requires "stew >= 0.1.0"
-requires "nimcrypto >= 0.5.4"
 requires "unittest2 >= 0.0.4"
-requires "chronicles >= 0.10.2"
-requires "eth >= 1.0.0"
-requires "chronos >= 3.2.0"
+requires "uuids >= 0.1.11"
+requires "nimterop >= 0.6.13"
 
-# Helper functions
+task test, "Run tests":
+  exec "nim c -r tests/test_consensus_state_machine.nim "
+
