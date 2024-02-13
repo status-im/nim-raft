@@ -14,7 +14,7 @@ version       = "0.0.1"
 author        = "Status Research & Development GmbH"
 description   = "raft consensus in nim"
 license       = "Apache License 2.0"
-srcDir        = "libs"
+srcDir        = "src"
 installExt    = @["nim"]
 skipDirs      = @["tests"]
 bin           = @["raft"]
@@ -26,6 +26,5 @@ requires "unittest2 >= 0.0.4"
 requires "uuids >= 0.1.11"
 requires "chronicles >= 0.10.3"
 requires "chronos >= 3.0.11"
-requires "nimdbx >= 0.4.1"
 
 

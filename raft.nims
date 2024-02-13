@@ -12,7 +12,8 @@ proc buildLibrary(name: string, srcDir = "./", params = "", `type` = "static") =
 
 
 task build, "Build static lib":
-  buildLibrary "nim-raft", "libs/raft/"
+  buildLibrary "raft", "src/"
+  # echo "pesho"
 
 task test, "Run tests":
   exec "nim c -r tests/test_consensus_state_machine.nim "
