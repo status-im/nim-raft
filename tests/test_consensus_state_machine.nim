@@ -13,13 +13,17 @@ import ../src/raft/consensus_state_machine
 import ../src/raft/log
 import ../src/raft/tracker
 import ../src/raft/state
+import std/sets
 import std/[times, sequtils]
 import uuids
 import tables
+import std/algorithm
 
 type
   TestCluster* = object
     nodes: Table[RaftnodeId, RaftStateMachine]
+    blockedTickSet: HashSet[RaftnodeId]
+    blockedMsgRoutingSet: HashSet[RaftnodeId]
 
 var test_ids_3 = @[
   RaftnodeId(parseUUID("a8409b39-f17b-4682-aaef-a19cc9f356fb")),
@@ -40,6 +44,8 @@ func createConfigFromIds(ids: seq[RaftnodeId]): RaftConfig =
 proc createCluster(ids: seq[RaftnodeId], now: times.DateTime) : TestCluster =
   var config = createConfigFromIds(ids)
   var cluster = TestCluster()
+  cluster.blockedTickSet.init()
+  cluster.blockedMsgRoutingSet.init()
   cluster.nodes = initTable[RaftnodeId, RaftStateMachine]()
   for i in 0..<config.currentSet.len:
       let id = config.currentSet[i]
@@ -48,15 +54,43 @@ proc createCluster(ids: seq[RaftnodeId], now: times.DateTime) : TestCluster =
       cluster.nodes[id] = node
   return cluster
 
-proc advance(tc: var TestCluster, now: times.DateTime) = 
+proc blockTick(tc: var TestCluster, id: RaftnodeId) =
+  tc.blockedTickSet.incl(id)
+
+func blockMsgRouting(tc: var TestCluster, id: RaftnodeId) =
+  tc.blockedMsgRoutingSet.incl(id)
+
+func allowTick(tc: var TestCluster, id: RaftnodeId) =
+  tc.blockedTickSet.excl(id)
+
+func allowMsgRouting(tc: var TestCluster, id: RaftnodeId) =
+  tc.blockedMsgRoutingSet.excl(id)
+
+proc cmpLogs(x, y: DebugLogEntry): int =
+  cmp(x.time, y.time)
+
+
+func `$`*(de: DebugLogEntry): string = 
+  return "[" & $de.level & "][" & de.time.format("HH:mm:ss:fff") & "][" & (($de.nodeId)[0..7]) & "...][" & $de.state & "]: " & de.msg
+
+
+proc advance(tc: var TestCluster, now: times.DateTime, logLevel: DebugLogLevel = DebugLogLevel.Error) = 
+  var debugLogs : seq[DebugLogEntry]
   for id, node in tc.nodes:
+    if tc.blockedTickSet.contains(id):
+      continue
     tc.nodes[id].tick(now)
     var output = tc.nodes[id].poll()
-    # for msg in output.debugLogs:
-    #   echo $msg
+    debugLogs.add(output.debugLogs)
     for msg in output.messages:
-        #echo "rpc:" & $msg
-        tc.nodes[msg.receiver].advance(msg, now)
+        echo "rpc:" & $msg
+        if not tc.blockedMsgRoutingSet.contains(msg.sender) and not tc.blockedMsgRoutingSet.contains(msg.receiver):
+          tc.nodes[msg.receiver].advance(msg, now)
+    debugLogs.sort(cmpLogs)
+    for msg in debugLogs:
+      if msg.level <= logLevel:
+        echo $msg
+    
     
 func getLeader(tc: TestCluster): Option[RaftStateMachine] = 
   for id, node in tc.nodes:
@@ -352,6 +386,7 @@ proc consensusstatemachineMain*() =
       var cluster = createCluster(test_ids_3, times.now())
       var timeNow = times.now()
       var leader: RaftnodeId
+      var hasLeader = false
       for i in 0..<105:
         timeNow += 5.milliseconds
         cluster.advance(timeNow)
@@ -359,11 +394,70 @@ proc consensusstatemachineMain*() =
         if leader == RaftnodeId():
           if maybeLeader.isSome:
             leader = maybeLeader.get().myId
+            hasLeader = true
         else:
           if maybeLeader.isSome:
             check leader == maybeLeader.get().myId
           else:
             check false
+      # we should elect atleast 1 leader
+      check hasLeader
+
+    test "1 node is not responding":
+      var cluster = createCluster(test_ids_3, times.now())
+      cluster.blockMsgRouting(test_ids_3[0])
+      var timeNow = times.now()
+      var leader: RaftnodeId
+      var hasLeader = false
+      for i in 0..<105:
+        timeNow += 5.milliseconds
+        cluster.advance(timeNow)
+        var maybeLeader = cluster.getLeader()
+        if leader == RaftnodeId():
+          if maybeLeader.isSome:
+            leader = maybeLeader.get().myId
+            hasLeader = true
+        else:
+          if maybeLeader.isSome:
+            check leader == maybeLeader.get().myId
+          else:
+            check false
+      # we should elect atleast 1 leader
+      check hasLeader
+
+    test "2 nodes is not responding":
+      var cluster = createCluster(test_ids_3, times.now())
+      cluster.blockMsgRouting(test_ids_3[0])
+      cluster.blockMsgRouting(test_ids_3[1])
+      var timeNow = times.now()
+      var leader: RaftnodeId
+      for i in 0..<105:
+        timeNow += 5.milliseconds
+        cluster.advance(timeNow)
+        var maybeLeader = cluster.getLeader()
+        # We should never elect a leader
+        check leader == RaftnodeId()
+    
+
+    test "1 nodes is not responding new leader reelection": 
+      var cluster = createCluster(test_ids_3, times.now())
+      var timeNow = times.now()
+      var leader: RaftnodeId
+      var firstLeaderId = RaftnodeId()
+      var secondLeaderId = RaftnodeId()
+      for i in 0..<305:
+        timeNow += 5.milliseconds
+        cluster.advance(timeNow, DebugLogLevel.Debug)
+        var maybeLeader = cluster.getLeader()
+        if maybeLeader.isSome():
+          # we will block the comunication and will try to elect new leader
+          firstLeaderId = maybeLeader.get().myId
+          cluster.blockMsgRouting(firstLeaderId)
+        if firstLeaderId != RaftnodeId() and maybeLeader.isSome() and maybeLeader.get().myId != firstLeaderId:
+          secondLeaderId = maybeLeader.get().myId
+      check secondLeaderId != RaftnodeId()
+          
+
 
 if isMainModule:
   consensusstatemachineMain()

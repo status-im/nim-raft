@@ -29,6 +29,21 @@ type
     Rejected = 0,
     Accepted = 1
 
+  DebugLogLevel* = enum
+    Critical = 0,
+    Error = 1,
+    Warning = 2,
+    Debug = 3,
+    Info = 4,
+  
+  DebugLogEntry* = object
+    level*: DebugLogLevel
+    time*: times.DateTime
+    nodeId*: RaftnodeId
+    state*: RaftNodeState
+    msg*: string
+
+
   RaftRpcAppendRequest* = object
     previousTerm*: RaftNodeTerm
     previousLogIndex*: RaftLogIndex
@@ -74,7 +89,7 @@ type
     # Entries that should be applyed to the "User" State machine
     committed*: seq[LogEntry]
     messages*: seq[RaftRpcMessage]
-    debugLogs*: seq[string]
+    debugLogs*: seq[DebugLogEntry]
     term*: RaftNodeTerm
     votedFor*: Option[RaftNodeId]
     stateChange*: bool
@@ -110,8 +125,25 @@ func follower*(sm: var RaftStateMachine): var FollowerState =
 func candidate*(sm: var RaftStateMachine): var CandidateState =
   return sm.state.candidate
 
+func addDebugLogEntry(sm: var RaftStateMachine, level: DebugLogLevel, msg: string) =
+  sm.output.debugLogs.add(DebugLogEntry(time: sm.timeNow, level: level, msg: msg, nodeId: sm.myId))
+
 func debug*(sm: var RaftStateMachine, log: string) = 
-  sm.output.debugLogs.add("[" & $(sm.timeNow - sm.startTime).inMilliseconds & "ms] [" & (($sm.myId)[0..7]) & "...] [" & $sm.state & "]: " & log)
+  sm.addDebugLogEntry(DebugLogLevel.Debug, log)
+
+func warning*(sm: var RaftStateMachine, log: string) = 
+  sm.addDebugLogEntry(DebugLogLevel.Warning, log)
+
+func error*(sm: var RaftStateMachine, log: string) = 
+  sm.addDebugLogEntry(DebugLogLevel.Error, log)
+
+func info*(sm: var RaftStateMachine, log: string) = 
+  sm.addDebugLogEntry(DebugLogLevel.Info, log)
+
+func critical*(sm: var RaftStateMachine, log: string) = 
+  sm.addDebugLogEntry(DebugLogLevel.Critical, log)
+
+
 
 proc resetElectionTimeout*(sm: var RaftStateMachine) =
   # TODO actually pick random time
@@ -155,7 +187,7 @@ func sendTo[MsgType](sm: var RaftStateMachine, id: RaftNodeId, request: MsgType)
     if follower.isSome:
       follower.get().lastMessageAt = sm.timeNow
     else:
-      sm.debug "Follower not found: " & $id 
+      sm.warning "Follower not found: " & $id 
       sm.debug $sm.leader
   sm.sendToImpl(id, request)
 
@@ -194,7 +226,7 @@ func replicate*(sm: var RaftStateMachine) =
  
 func addEntry(sm: var RaftStateMachine, entry: LogEntry) =
   if not sm.state.isLeader:
-    sm.debug "Error: only the leader can handle new entries"
+    sm.error "only the leader can handle new entries"
   sm.log.appendAsLeader(entry)
 
 func addEntry*(sm: var RaftStateMachine, command: Command) =
@@ -208,7 +240,7 @@ func addEntry*(sm: var RaftStateMachine, dummy: Empty) =
 
 func becomeFollower*(sm: var RaftStateMachine, leaderId: RaftNodeId) =
   if sm.myId == leaderId:
-    sm.debug "Can't be follower of itself"
+    sm.error "Can't be follower of itself"
   sm.output.stateChange = not sm.state.isFollower
   sm.state = initFollower(leaderId)
   if leaderId != RaftnodeId():
@@ -217,7 +249,7 @@ func becomeFollower*(sm: var RaftStateMachine, leaderId: RaftNodeId) =
 
 func becomeLeader*(sm: var RaftStateMachine) =
   if sm.state.isLeader:
-    sm.debug "The leader can't become leader second time"
+    sm.error "The leader can't become leader second time"
     return
 
   sm.output.stateChange = true
@@ -255,7 +287,7 @@ func becomeCandidate*(sm: var RaftStateMachine) =
   return
 
 func heartbeat(sm: var RaftStateMachine, follower: var RaftFollowerProgressTracker) =
-  sm.debug "heartbeat" & $follower.nextIndex
+  sm.info "heartbeat " & $follower.nextIndex
   # TODO: we should just send empty array instead adding new empty entries on each heartbeat
   sm.addEntry(Empty())
 
@@ -268,7 +300,7 @@ func tickLeader*(sm: var RaftStateMachine, now: times.DateTime) =
 
   sm.lastElectionTime = now
   if not sm.state.isLeader:
-    sm.debug "tickLeader can be called only on the leader"
+    sm.error "tickLeader can be called only on the leader"
     return
   for followerIndex in 0..<sm.leader.tracker.progress.len:
     var follower = sm.leader.tracker.progress[followerIndex]
@@ -279,12 +311,11 @@ func tickLeader*(sm: var RaftStateMachine, now: times.DateTime) =
 
       #sm.debug $(now - follower.lastMessageAt)
       if now - follower.lastMessageAt > sm.heartbeatTime:
-        sm.debug "heartbeat"
         sm.heartbeat(follower)
     # TODO: implement step down logic
 
 func tick*(sm: var RaftStateMachine, now: times.DateTime) =
-    sm.debug "Term: " & $sm.term & " commit idx " & $sm.commitIndex & " Time since last update: " & $(now - sm.timeNow).inMilliseconds & "ms time until election:" & $(sm.randomizedElectionTime - (sm.timeNow - sm.lastElectionTime)).inMilliseconds & "ms"
+    sm.info "Term: " & $sm.term & " commit idx " & $sm.commitIndex & " Time since last update: " & $(now - sm.timeNow).inMilliseconds & "ms time until election:" & $(sm.randomizedElectionTime - (sm.timeNow - sm.lastElectionTime)).inMilliseconds & "ms"
     sm.timeNow = now
     if sm.state.isLeader:
       sm.tickLeader(now);
@@ -415,7 +446,7 @@ func advance*(sm: var RaftStateMachine, msg: RaftRpcMessage, now: times.DateTime
       let responce = RaftRpcAppendReplay(term: sm.term, commitIndex: sm.commitIndex, result: RaftRpcCode.Rejected, rejected: rejected)
       sm.sendTo(msg.sender, responce)
 
-    sm.debug "Ignore message with lower term"
+    sm.warning "Ignore message with lower term"
   else:
     # TODO: add also snapshot 
     if msg.kind == RaftRpcMessageType.AppendRequest:
@@ -431,7 +462,7 @@ func advance*(sm: var RaftStateMachine, msg: RaftRpcMessage, now: times.DateTime
       sm.debug "Apply vote"
       sm.requestVoteReply(msg.sender, msg.voteReplay)
     else:
-      sm.debug "Candidate ignore message"
+      sm.warning "Candidate ignore message"
   elif sm.state.isFollower:
     if msg.sender == sm.follower.leader:
       sm.lastElectionTime = now
@@ -440,14 +471,14 @@ func advance*(sm: var RaftStateMachine, msg: RaftRpcMessage, now: times.DateTime
     elif msg.kind == RaftRpcMessageType.VoteRequest:
       sm.requestVote(msg.sender, msg.voteRequest)
     else:
-      sm.debug "Follower ignore message" & $msg
+      sm.warning "Follower ignore message" & $msg
     # TODO: imelement the rest of the state transitions
   elif sm.state.isLeader:
     if msg.kind == RaftRpcMessageType.AppendRequest:
-      sm.debug "Ignore message leader append his entries directly"
+      sm.warning "Ignore message leader append his entries directly"
     elif msg.kind == RaftRpcMessageType.AppendReplay:
       sm.appendEntryReplay(msg.sender, msg.appendReplay)
     elif msg.kind == RaftRpcMessageType.VoteRequest:
       sm.requestVote(msg.sender, msg.voteRequest)
     else:
-      sm.debug "Leader ignore message"
+      sm.warning "Leader ignore message"

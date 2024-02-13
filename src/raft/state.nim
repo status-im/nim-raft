@@ -4,7 +4,7 @@ import tracker
 
 import std/[times]
 type
-  RaftNodeState = enum
+  RaftNodeState* = enum
     rnsFollower = 0,                        # Follower state
     rnsCandidate = 1                        # Candidate state
     rnsLeader = 2                           # Leader state
