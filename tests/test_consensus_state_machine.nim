@@ -8,11 +8,11 @@
 # those terms.
 
 import unittest2
-import ../raft/types
-import ../raft/consensus_state_machine
-import ../raft/log
-import ../raft/tracker
-import ../raft/state
+import ../src/raft/types
+import ../src/raft/consensus_state_machine
+import ../src/raft/log
+import ../src/raft/tracker
+import ../src/raft/state
 import std/[times, sequtils]
 import uuids
 import tables
