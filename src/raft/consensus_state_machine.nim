@@ -185,7 +185,6 @@ func replicateTo*(sm: var RaftStateMachine, follower: RaftFollowerProgressTracke
       entries: @[sm.log.getEntryByIndex(follower.nextIndex)])
     follower.nextIndex += 1
     sm.sendTo(follower.id, request)
-  sm.debug "exit" & $follower[]
 
 func replicate*(sm: var RaftStateMachine) =
   if sm.state.isLeader:
@@ -222,8 +221,10 @@ func becomeLeader*(sm: var RaftStateMachine) =
     return
 
   sm.output.stateChange = true
+  
+  # Because we will add new entry on the next line
+  sm.state = initLeader(sm.config, sm.log.lastIndex + 1, sm.timeNow)
   sm.addEntry(Empty())
-  sm.state = initLeader(sm.config, sm.log.lastIndex, sm.timeNow)
   sm.pingLeader = false
   #TODO: Update last election time  
   return
@@ -240,7 +241,7 @@ func becomeCandidate*(sm: var RaftStateMachine) =
   sm.term += 1
   for nodeId in sm.candidate.votes.voters:
     if nodeId == sm.myId:
-      sm.debug "reguster vote for it self "
+      sm.debug "register vote for it self "
       discard sm.candidate.votes.registerVote(nodeId, true)
       sm.votedFor = nodeId
       continue
@@ -253,8 +254,9 @@ func becomeCandidate*(sm: var RaftStateMachine) =
   
   return
 
-func hearthbeat(sm: var RaftStateMachine, follower: var RaftFollowerProgressTracker) =
-  sm.debug "hearthbear" & $follower.nextIndex
+func heartbeat(sm: var RaftStateMachine, follower: var RaftFollowerProgressTracker) =
+  sm.debug "heartbeat" & $follower.nextIndex
+  # TODO: we should just send empty array instead adding new empty entries on each heartbeat
   sm.addEntry(Empty())
 
 func tickLeader*(sm: var RaftStateMachine, now: times.DateTime) =
@@ -278,7 +280,7 @@ func tickLeader*(sm: var RaftStateMachine, now: times.DateTime) =
       #sm.debug $(now - follower.lastMessageAt)
       if now - follower.lastMessageAt > sm.heartbeatTime:
         sm.debug "heartbeat"
-        sm.hearthbeat(follower)
+        sm.heartbeat(follower)
     # TODO: implement step down logic
 
 func tick*(sm: var RaftStateMachine, now: times.DateTime) =
