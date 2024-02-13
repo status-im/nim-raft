@@ -13,7 +13,6 @@ import tracker
 import state
 
 import std/[times]
-import std/sequtils
 import std/random
 
 

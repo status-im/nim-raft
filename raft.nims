@@ -12,7 +12,7 @@ proc buildLibrary(name: string, srcDir = "./", params = "", `type` = "static") =
 
 
 task build, "Build static lib":
-  buildLibrary "nim-raft", "src/raft/"
+  buildLibrary "nim-raft", "libs/raft/"
 
 task test, "Run tests":
   exec "nim c -r tests/test_consensus_state_machine.nim "
