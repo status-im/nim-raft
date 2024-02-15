@@ -10,7 +10,7 @@ type
     rnsLeader = 2                           # Leader state
 
   RaftStateMachineState* = object
-    case state: RaftNodeState
+    case state*: RaftNodeState
     of rnsFollower: follower: FollowerState
     of rnsCandidate: candidate: CandidateState
     of rnsLeader: leader: LeaderState
