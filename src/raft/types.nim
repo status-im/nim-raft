@@ -29,5 +29,6 @@ type
   RaftNodeId* = UUID                        # uuid4 uniquely identifying every Raft Node
   RaftNodeTerm* = int                       # Raft Node Term Type
   RaftLogIndex* = int                       # Raft Node Log Index Type
+  RaftSnapshotId* = int
   RaftConfig* = object
     currentSet*: seq[RaftNodeId]
