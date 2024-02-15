@@ -69,10 +69,8 @@ func allowMsgRouting(tc: var TestCluster, id: RaftnodeId) =
 proc cmpLogs(x, y: DebugLogEntry): int =
   cmp(x.time, y.time)
 
-
 func `$`*(de: DebugLogEntry): string = 
   return "[" & $de.level & "][" & de.time.format("HH:mm:ss:fff") & "][" & (($de.nodeId)[0..7]) & "...][" & $de.state & "]: " & de.msg
-
 
 proc advance(tc: var TestCluster, now: times.DateTime, logLevel: DebugLogLevel = DebugLogLevel.Error) = 
   var debugLogs : seq[DebugLogEntry]
@@ -91,15 +89,12 @@ proc advance(tc: var TestCluster, now: times.DateTime, logLevel: DebugLogLevel =
           if DebugLogLevel.Debug <= logLevel:
             echo "[" & now.format("HH:mm:ss:fff") & "] rpc message is blocked: "  & $msg & $tc.blockedMsgRoutingSet
     for commit in output.committed:
-      echo $commit
+      if DebugLogLevel.Debug <= logLevel:
+        echo "[" & (($node.myId)[0..7]) & "...] Commit:" & $commit
   debugLogs.sort(cmpLogs)
   for msg in debugLogs:
     if msg.level <= logLevel:
       echo $msg
-
-
-  
-    
     
 func getLeader(tc: TestCluster): Option[RaftStateMachine] = 
   var leader = none(RaftStateMachine)

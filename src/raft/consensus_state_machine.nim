@@ -111,6 +111,12 @@ type
     votedFor*: Option[RaftNodeId]
     stateChange*: bool
 
+  RaftLastPollState* = object
+    term*: RaftNodeTerm
+    votedFor*: RaftNodeId
+    commitIndex: RaftLogIndex
+
+
   RaftStateMachine* = object
     myId*: RaftNodeId
     term*: RaftNodeTerm
@@ -132,7 +138,19 @@ type
     electionTimeout: times.Duration
     randomGenerator: Rand
 
+    observedState: RaftLastPollState
     state*: RaftStateMachineState
+
+
+func observe(ps: var RaftLastPollState, sm: RaftStateMachine) =
+  ps.term = sm.term
+  ps.votedFor = sm.votedFor
+  ps.commitIndex = sm.commitIndex
+
+func eq(ps: RaftLastPollState, sm: RaftStateMachine): bool =
+  return ps.term == sm.term and
+  ps.votedFor == sm.votedFor and
+  ps.commitIndex == sm.commitIndex
 
 func leader*(sm: var RaftStateMachine): var LeaderState =
   return sm.state.leader
@@ -180,6 +198,7 @@ func initRaftStateMachine*(id: RaftnodeId, currentTerm: RaftNodeTerm, log: RaftL
   sm.heartbeatTime = times.initDuration(milliseconds = 50)
   sm.randomGenerator = randomGenerator
   sm.resetElectionTimeout()
+  sm.observedState.observe(sm)
   return sm
 
 func findFollowerProggressById(sm: var RaftStateMachine, id: RaftNodeId): Option[RaftFollowerProgressTracker] =
@@ -352,14 +371,19 @@ func poll*(sm: var RaftStateMachine):  RaftStateMachineOutput =
   if sm.state.isLeader:
     sm.replicate()
   sm.output.term = sm.term
+  if sm.observedState.commitIndex < sm.commitIndex:
+    for i in (sm.observedState.commitIndex + 1)..<(sm.commitIndex + 1):
+      sm.output.committed.add(sm.log.getEntryByIndex(i))
+
   if sm.votedFor != RaftnodeId():
     sm.output.votedFor = some(sm.votedFor)
 
+  sm.observedState.observe(sm)
   let output = sm.output
   sm.output = RaftStateMachineOutput()
   return output
 
-func commit*(sm: var RaftStateMachine) =
+func commit(sm: var RaftStateMachine) =
   if not sm.state.isLeader:
     return
   var newIndex = sm.commitIndex
@@ -370,9 +394,9 @@ func commit*(sm: var RaftStateMachine) =
       if p.matchIndex > newIndex:
          replicationCnt += 1
     if replicationCnt >= (sm.leader.tracker.progress.len div 2  + 1):
-      sm.output.committed.add(sm.log.getEntryByIndex(nextIndex))
-      sm.commitIndex += nextIndex;
+      sm.commitIndex = nextIndex;
       nextIndex += 1
+      newIndex += 1
     else:
       break 
 
