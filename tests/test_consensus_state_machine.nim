@@ -103,7 +103,7 @@ func getLeader(tc: TestCluster): Option[RaftStateMachine] =
       if not leader.isSome() or leader.get().term < node.term:
         leader = some(node)
   return leader
-  
+
 proc consensusstatemachineMain*() =
 
   suite "Basic state machine tests":

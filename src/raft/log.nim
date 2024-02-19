@@ -7,7 +7,7 @@ type
     rletConfig = 1,
     rletEmpty = 2
   Command* = object
-    data: seq[byte]
+    data*: seq[byte]
   Config* = object
   Empty* = object
 
