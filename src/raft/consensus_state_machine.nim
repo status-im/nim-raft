@@ -365,11 +365,30 @@ func tick*(sm: var RaftStateMachine, now: times.DateTime) =
     elif sm.state.isFollower and sm.timeNow - sm.lastElectionTime > sm.randomizedElectionTime:
       sm.debug "Become candidate"
       sm.becomeCandidate()
-    
+
+func commit(sm: var RaftStateMachine) =
+  if not sm.state.isLeader:
+    return
+  var newIndex = sm.commitIndex
+  var nextIndex = sm.commitIndex + 1
+  while nextIndex < sm.log.lastIndex:
+    var replicationCnt = 1
+    for p in sm.leader.tracker.progress:
+      if p.matchIndex > newIndex:
+         replicationCnt += 1
+    sm.debug "replication count" & $replicationCnt
+    if replicationCnt >= (sm.leader.tracker.progress.len div 2  + 1):
+      sm.commitIndex = nextIndex;
+      nextIndex += 1
+      newIndex += 1
+    else:
+      break 
+
 func poll*(sm: var RaftStateMachine):  RaftStateMachineOutput =
   # Should initiate replication if we have new entries
   if sm.state.isLeader:
     sm.replicate()
+    sm.commit()
   sm.output.term = sm.term
   if sm.observedState.commitIndex < sm.commitIndex:
     for i in (sm.observedState.commitIndex + 1)..<(sm.commitIndex + 1):
@@ -382,23 +401,6 @@ func poll*(sm: var RaftStateMachine):  RaftStateMachineOutput =
   let output = sm.output
   sm.output = RaftStateMachineOutput()
   return output
-
-func commit(sm: var RaftStateMachine) =
-  if not sm.state.isLeader:
-    return
-  var newIndex = sm.commitIndex
-  var nextIndex = sm.commitIndex + 1
-  while nextIndex < sm.log.lastIndex:
-    var replicationCnt = 0
-    for p in sm.leader.tracker.progress:
-      if p.matchIndex > newIndex:
-         replicationCnt += 1
-    if replicationCnt >= (sm.leader.tracker.progress.len div 2  + 1):
-      sm.commitIndex = nextIndex;
-      nextIndex += 1
-      newIndex += 1
-    else:
-      break 
 
 func appendEntryReply*(sm: var RaftStateMachine, fromId: RaftNodeId, reply: RaftRpcAppendReply) =
   if not sm.state.isLeader:
@@ -415,7 +417,6 @@ func appendEntryReply*(sm: var RaftStateMachine, fromId: RaftNodeId, reply: Raft
       sm.debug "Accpeted" & $fromId & " " & $lastIndex
       follower.get().accepted(lastIndex)
       # TODO: add leader stepping down logic here
-      sm.commit()
       if not sm.state.isLeader:
         return
     of RaftRpcCode.Rejected:
