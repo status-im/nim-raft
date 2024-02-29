@@ -231,7 +231,6 @@ proc consensusstatemachineMain*() =
       timeNow +=  500.milliseconds
       sm.tick(timeNow)
       output = sm.poll()
-      echo output
       check output.logEntries.len == 0
       # When the node became a leader it will produce empty message in the log 
       # and because we have single node cluster the node will commit that entry immediately
