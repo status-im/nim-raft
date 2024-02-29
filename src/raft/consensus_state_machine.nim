@@ -59,8 +59,8 @@ type
     lastNewIndex: RaftLogIndex
 
   RaftRpcAppendReply* = object
-    commitIndex: RaftLogIndex
-    term: RaftNodeTerm
+    commitIndex*: RaftLogIndex
+    term*: RaftNodeTerm
     case result: RaftRpcCode:
       of Accepted: accepted: RaftRpcAppendReplyAccepted
       of Rejected: rejected: RaftRpcAppendReplyRejected 
@@ -224,7 +224,7 @@ func sendToImpl*(sm: var RaftStateMachine, id: RaftNodeId, request: RaftInstallS
 
 
 func sendTo[MsgType](sm: var RaftStateMachine, id: RaftNodeId, request: MsgType) =
-  sm.debug "Send to" & $id & $request
+  sm.debug "Send to " & $id & $request
   if sm.state.isLeader:
     var follower = sm.findFollowerProggressById(id)
     if follower.isSome:
@@ -331,8 +331,15 @@ func becomeCandidate*(sm: var RaftStateMachine) =
 
 func heartbeat(sm: var RaftStateMachine, follower: var RaftFollowerProgressTracker) =
   sm.info "heartbeat " & $follower.nextIndex
-  # TODO: we should just send empty array instead adding new empty entries on each heartbeat
-  sm.addEntry(Empty())
+  var previousTerm = 0
+  if sm.log.lastIndex > 1:
+    previousTerm = sm.log.termForIndex(follower.nextIndex - 1).get()
+  let request = RaftRpcAppendRequest(
+      previousTerm: previousTerm,
+      previousLogIndex: follower.nextIndex - 1,
+      commitIndex: sm.commitIndex,
+      entries: @[])
+  sm.sendTo(follower.id, request)
 
 func tickLeader*(sm: var RaftStateMachine, now: times.DateTime) =
   sm.timeNow = now
@@ -371,13 +378,14 @@ func commit(sm: var RaftStateMachine) =
     return
   var newIndex = sm.commitIndex
   var nextIndex = sm.commitIndex + 1
-  while nextIndex < sm.log.lastIndex:
+  while nextIndex < sm.log.nextIndex:
     var replicationCnt = 1
     for p in sm.leader.tracker.progress:
       if p.matchIndex > newIndex:
          replicationCnt += 1
-    sm.debug "replication count" & $replicationCnt
+    sm.debug "replication count: " & $replicationCnt & " for log index: " & $nextIndex
     if replicationCnt >= (sm.leader.tracker.progress.len div 2  + 1):
+      sm.debug "Commit index: " & $nextIndex
       sm.commitIndex = nextIndex;
       nextIndex += 1
       newIndex += 1
@@ -414,7 +422,7 @@ func appendEntryReply*(sm: var RaftStateMachine, fromId: RaftNodeId, reply: Raft
   case reply.result:
     of RaftRpcCode.Accepted:
       let lastIndex = reply.accepted.lastNewIndex
-      sm.debug "Accpeted" & $fromId & " " & $lastIndex
+      sm.debug "Accpeted message from" & $fromId & " last log index: " & $lastIndex
       follower.get().accepted(lastIndex)
       # TODO: add leader stepping down logic here
       if not sm.state.isLeader:
@@ -432,6 +440,7 @@ func appendEntryReply*(sm: var RaftStateMachine, fromId: RaftNodeId, reply: Raft
 func advanceCommitIdx(sm: var RaftStateMachine, leaderIdx: RaftLogIndex) =
   let newIdx = min(leaderIdx, sm.log.lastIndex)
   if newIdx > sm.commitIndex:
+    sm.debug "Commit index is changed. Old:" & $sm.commitIndex & " New:" & $newIdx
     sm.commitIndex = newIdx
     # TODO: signal the output for the update
 

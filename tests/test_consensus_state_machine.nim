@@ -231,8 +231,11 @@ proc consensusstatemachineMain*() =
       timeNow +=  500.milliseconds
       sm.tick(timeNow)
       output = sm.poll()
+      echo output
       check output.logEntries.len == 0
-      check output.committed.len == 0
+      # When the node became a leader it will produce empty message in the log 
+      # and because we have single node cluster the node will commit that entry immediately
+      check output.committed.len == 1
       check output.messages.len == 0
       check sm.state.isLeader
       check sm.term == 1
@@ -247,7 +250,9 @@ proc consensusstatemachineMain*() =
       sm.tick(timeNow)
       var output = sm.poll()
       check output.logEntries.len == 0
-      check output.committed.len == 0
+      # When the node became a leader it will produce empty message in the log 
+      # and because we have single node cluster the node will commit that entry immediately
+      check output.committed.len == 1
       check output.messages.len == 0
       check sm.state.isLeader
       sm.addEntry(Empty())

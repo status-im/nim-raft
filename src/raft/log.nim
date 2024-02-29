@@ -97,7 +97,7 @@ func matchTerm*(rf: RaftLog, index: RaftLogIndex, term: RaftNodeTerm): (bool, Ra
 
 func termForIndex*(rf: RaftLog, index: RaftLogIndex): Option[RaftNodeTerm] =
   # TODO: snapshot support
-  assert rf.logEntries.len > index 
+  assert rf.logEntries.len > index - rf.firstIndex, $rf.logEntries.len  & " " & $index & "" & $rf
   if rf.logEntries.len > 0 and index >= rf.firstIndex:
-    return some(rf.logEntries[index].term)
+    return some(rf.logEntries[index - rf.firstIndex].term)
   return none(RaftNodeTerm)

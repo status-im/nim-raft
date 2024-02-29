@@ -5,6 +5,7 @@ import ../src/raft/tracker
 import ../src/raft/state
 
 import std/[times, sequtils, random]
+import std/sugar
 import std/sets
 import std/json
 import std/jsonutils
@@ -32,6 +33,7 @@ type
 
   SignedLogEntry = object
     hash: Hash
+    logIndex: RaftLogIndex
     signature: SignedShare
 
   BLSTestNode* = ref object
@@ -46,10 +48,22 @@ type
 
   BLSTestCluster* = object
     nodes*: Table[RaftnodeId, BLSTestNode]
+    delayer*: MessageDelayer
 
   SecretShare = object
     secret: SecretKey
     id: ID
+
+  DelayedMessage* = object
+    msg: SignedRpcMessage
+    executeAt: times.DateTime
+
+  MessageDelayer* = object
+    messages: seq[DelayedMessage]
+    randomGenerator: Rand
+    meanDelay: float
+    stdDelay: float
+    minDelayMs: int
 
   SignedShare = object
     sign: Signature
@@ -71,6 +85,26 @@ var test_ids_3 = @[
 var test_ids_1 = @[
   RaftnodeId(parseUUID("a8409b39-f17b-4682-aaef-a19cc9f356fb")),
 ]
+
+
+proc initDelayer(mean: float, std: float, minInMs: int, generator: Rand): MessageDelayer = 
+  var delayer = MessageDelayer()
+  delayer.meanDelay = mean
+  delayer.stdDelay = std
+  delayer.minDelayMs = minInMs
+  delayer.randomGenerator = generator
+  return delayer
+
+proc getMessages(delayer: var MessageDelayer, now: times.DateTime): seq[SignedRpcMessage] =
+  result = delayer.messages.filter(m => m.executeAt <= now).map(m => m.msg)
+  delayer.messages = delayer.messages.filter(m => m.executeAt > now)
+  return result
+
+proc add(delayer: var MessageDelayer, message: SignedRpcMessage, now: times.DateTime) =
+  let rndDelay = delayer.randomGenerator.gauss(delayer.meanDelay, delayer.stdDelay)
+  let at = now + times.initDuration(milliseconds = delayer.minDelayMs + rndDelay.int)
+  delayer.messages.add(DelayedMessage(msg: message, executeAt: at))
+
 
 proc signs(shares: openArray[SignedShare]): seq[Signature] =
   shares.mapIt(it.sign)
@@ -110,6 +144,16 @@ func `$`*(de: DebugLogEntry): string =
   return "[" & $de.level & "][" & de.time.format("HH:mm:ss:fff") & "][" & (($de.nodeId)[0..7]) & "...][" & $de.state & "]: " & de.msg
 
 
+proc sign(node: BLSTestNode, msg: Message): SignedShare =
+    var pk: PublicKey
+    discard pk.publicFromSecret(node.keyShare.secret)
+    echo "Produce signature from node: " & $node.stm.myId & " with public key: " & $pk.toHex & "over msg " & $msg.toJson
+    return SignedShare(
+      sign: node.keyShare.secret.sign(msg.toBytes),
+      pubkey: pk,
+      id: node.keyShare.id,
+    )
+
 proc pollMessages(node: BLSTestNode): seq[SignedRpcMessage] =
   var output = node.stm.poll()
   var debugLogs = output.debugLogs
@@ -122,7 +166,9 @@ proc pollMessages(node: BLSTestNode): seq[SignedRpcMessage] =
         raftMsg: msg,
         signEntries: node.signEntries
       ))
-      node.signEntries = @[]
+      let commitIndex = msg.appendReply.commitIndex
+      # remove the signature of all entries that are already commited
+      node.signEntries = node.signEntries.filter(x => x.logIndex > commitIndex)
     else:
       msgs.add(SignedRpcMessage(
         raftMsg: msg,
@@ -135,6 +181,7 @@ proc pollMessages(node: BLSTestNode): seq[SignedRpcMessage] =
       var orgMsg = commitedMsg.command.toMessage
       var shares = node.messageSignatures[orgMsg.fieldInt]
       echo "Try to recover message" & $orgMsg.toBytes
+      echo "Shares: " & $shares.signs
       var recoveredSignature = recover(shares.signs, shares.ids).expect("valid shares")
       if not node.clusterPublicKey.verify(orgMsg.toBytes, recoveredSignature):
         node.us.lastCommitedMsg = orgMsg
@@ -148,20 +195,18 @@ proc pollMessages(node: BLSTestNode): seq[SignedRpcMessage] =
       echo $msg
   return msgs
 
-proc acceptMessage(node: BLSTestNode, msg: SignedRpcMessage, now: times.DateTime) =
-  if msg.raftMsg.kind == RaftRpcMessageType.AppendReply and node.stm.state.isFollower:
+proc acceptMessage(node: var BLSTestNode, msg: SignedRpcMessage, now: times.DateTime) =
+  if msg.raftMsg.kind == RaftRpcMessageType.AppendRequest and node.stm.state.isFollower:
     var pk: PublicKey
     discard pk.publicFromSecret(node.keyShare.secret)
     for entry in msg.raftMsg.appendRequest.entries:
+        if entry.kind == rletEmpty:
+          continue
         var orgMsg = entry.command.toMessage
-        echo "Sign message" & $orgMsg.toBytes
         var share = SignedLogEntry(
           hash: orgMsg.fieldInt,
-          signature: SignedShare(
-            sign: node.keyShare.secret.sign(orgMsg.toBytes),
-            pubkey: pk,
-            id: node.keyShare.id,
-          )
+          logIndex: msg.raftMsg.appendRequest.previousLogIndex + 1,
+          signature: node.sign(orgMsg)
         )
         node.signEntries.add(share)
   node.stm.advance(msg.raftMsg, now)
@@ -192,18 +237,20 @@ proc generateSecretShares(sk: SecretKey, k: int, n: int): seq[SecretShare] =
     let secret = genSecretShare(originPts, id)
     result.add(SecretShare(secret: secret, id: id))
 
-proc createBLSCluster(ids: seq[RaftnodeId], now: times.DateTime) : BLSTestCluster =
+proc createBLSCluster(ids: seq[RaftnodeId], now: times.DateTime, k: int, n: int, delayer: MessageDelayer) : BLSTestCluster =
   var sk: SecretKey
   discard sk.fromHex("1b500388741efd98239a9b3a689721a89a92e8b209aabb10fb7dc3f844976dc2")
 
   var pk: PublicKey
   discard pk.publicFromSecret(sk)
 
-  var blsShares = generateSecretShares(sk, 2, 3)
+  var blsShares = generateSecretShares(sk, k, n)
 
   var config = createConfigFromIds(ids)
   var cluster = BLSTestCluster()
+  cluster.delayer = delayer
   cluster.nodes = initTable[RaftnodeId, BLSTestNode]()
+  
 
   for i in 0..<config.currentSet.len:
       let id = config.currentSet[i]
@@ -223,7 +270,12 @@ proc advance*(tc: var BLSTestCluster, now: times.DateTime, logLevel: DebugLogLev
     node.tick(now)
     var msgs = node.pollMessages()
     for msg in msgs:
-      tc.nodes[msg.raftMsg.receiver].acceptMessage(msg, now)
+      tc.delayer.add(msg, now) 
+
+  var msgs = tc.delayer.getMessages(now)
+  for msg in msgs:
+    echo "eloooooooooooooooooooooooooooooooo" & $ msg
+    tc.nodes[msg.raftMsg.receiver].acceptMessage(msg, now)
     
 func getLeader*(tc: BLSTestCluster): Option[BLSTestNode] = 
   var leader = none(BLSTestNode)
@@ -239,11 +291,7 @@ proc submitMessage(tc: var BLSTestCluster, msg: Message): bool =
     var pk: PublicKey
     discard pk.publicFromSecret(leader.get.keyShare.secret)
     echo "Leader Sign message" & $msg.toBytes
-    var share = SignedShare(
-      sign: leader.get.keyShare.secret.sign(msg.toBytes),
-      pubkey: pk,
-      id: leader.get.keyShare.id,
-    )
+    var share = leader.get().sign(msg)
     if not leader.get.messageSignatures.hasKey(msg.fieldInt):
       leader.get.messageSignatures[msg.fieldInt] = @[]
     leader.get.messageSignatures[msg.fieldInt].add(share)
@@ -252,38 +300,45 @@ proc submitMessage(tc: var BLSTestCluster, msg: Message): bool =
 
 proc blsconsensusMain*() =
   suite "BLS consensus tests":
-    # test "create single node cluster":
-    #   var timeNow = dateTime(2017, mMar, 01, 00, 00, 00, 00, utc())
-    #   var cluster = createBLSCluster(test_ids_1, timeNow)
+    test "create single node cluster":
+      var timeNow = dateTime(2017, mMar, 01, 00, 00, 00, 00, utc())
+      var delayer = initDelayer(3, 3, 1, initRand(42))
+      var cluster = createBLSCluster(test_ids_1, timeNow, 1, 1, delayer)
 
-    #   timeNow +=  300.milliseconds
-    #   cluster.advance(timeNow)
-    #   echo cluster.getLeader().get().stm.state
-    #   discard cluster.submitMessage(Message(fieldInt: 1))
-    #   discard cluster.submitMessage(Message(fieldInt: 2))
-    #   for i in 0..<305:
-    #     timeNow +=  5.milliseconds
-    #     cluster.advance(timeNow)
+      timeNow +=  300.milliseconds
+      cluster.advance(timeNow)
+      echo cluster.getLeader().get().stm.state
+      discard cluster.submitMessage(Message(fieldInt: 1))
+      discard cluster.submitMessage(Message(fieldInt: 2))
+      for i in 0..<305:
+        timeNow +=  5.milliseconds
+        cluster.advance(timeNow)
       
-    #   echo "Helloo" & $cluster.getLeader().get.us.lastCommitedMsg
+      echo "Helloo" & $cluster.getLeader().get.us.lastCommitedMsg
     
     test "create 3 node cluster":
       var timeNow = dateTime(2017, mMar, 01, 00, 00, 00, 00, utc())
-      var cluster = createBLSCluster(test_ids_3, timeNow)
+      var delayer = initDelayer(3, 3, 1, initRand(42))
+      var cluster = createBLSCluster(test_ids_3, timeNow, 2, 3, delayer)
 
-      #timeNow +=  300.milliseconds
+      # skip time until first election
+      timeNow +=  200.milliseconds
       cluster.advance(timeNow)
       var added = false
-      for i in 0..<305:
+      var commited = false
+      for i in 0..<50:
         cluster.advance(timeNow)
         if cluster.getLeader().isSome() and not added:
-          discard cluster.submitMessage(Message(fieldInt: 1))
+          discard cluster.submitMessage(Message(fieldInt: 42))
           added = true
           echo "Add to the entry log"
         timeNow +=  5.milliseconds
-        
-      #echo $cluster.nodes
-      echo "Last state" & $cluster.getLeader().get.us.lastCommitedMsg
+        if cluster.getLeader().isSome():
+          echo cluster.getLeader().get.us.lastCommitedMsg
+          if cluster.getLeader().get.us.lastCommitedMsg.fieldInt == 42:
+            commited = true
+            #break
+      check commited == true
     
 
 if isMainModule:
