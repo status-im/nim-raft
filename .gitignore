@@ -6,3 +6,5 @@
 *.out
 nimcache/
 build/
+nimbledeps/
+.VSCodeCounter
