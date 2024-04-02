@@ -9,7 +9,7 @@ type
     rnsCandidate = 1                        # Candidate state
     rnsLeader = 2                           # Leader state
 
-  RaftStateMachineState* = object
+  RaftStateMachineRefState* = object
     case state*: RaftNodeState
     of rnsFollower: follower: FollowerState
     of rnsCandidate: candidate: CandidateState
@@ -24,34 +24,37 @@ type
   FollowerState* = object
     leader*: RaftNodeId
 
-func `$`*(s: RaftStateMachineState): string =
+proc `=copy`*(d: var RaftStateMachineRefState; src: RaftStateMachineRefState) {.error.} =
+   discard
+
+func `$`*(s: RaftStateMachineRefState): string =
   return $s.state
 
-func initLeader*(cfg: RaftConfig, index: RaftLogIndex, now: times.DateTime): RaftStateMachineState =
-  var state = RaftStateMachineState(state: RaftnodeState.rnsLeader, leader: LeaderState())
-  state.leader.tracker = initTracker(cfg, index, now)
+func initLeader*(cfg: RaftConfig, index: RaftLogIndex, now: times.DateTime): RaftStateMachineRefState =
+  var state = RaftStateMachineRefState(state: RaftnodeState.rnsLeader, leader: LeaderState())
+  state.leader.tracker = RaftTracker.init(cfg, index, now)
   return state
 
-func initFollower*(leaderId: RaftNodeId): RaftStateMachineState =
-  return RaftStateMachineState(state: RaftNodeState.rnsFollower, follower: FollowerState(leader: leaderId))
+func initFollower*(leaderId: RaftNodeId): RaftStateMachineRefState =
+  return RaftStateMachineRefState(state: RaftNodeState.rnsFollower, follower: FollowerState(leader: leaderId))
 
-func initCandidate*(cfg: RaftConfig): RaftStateMachineState =
-  return RaftStateMachineState(state: RaftnodeState.rnsCandidate, candidate: CandidateState(votes: initVotes(cfg)))
+func initCandidate*(cfg: RaftConfig): RaftStateMachineRefState =
+  return RaftStateMachineRefState(state: RaftnodeState.rnsCandidate, candidate: CandidateState(votes: RaftVotes.init(cfg)))
 
-func isLeader*(s: RaftStateMachineState): bool =
+func isLeader*(s: RaftStateMachineRefState): bool =
   return s.state == RaftNodeState.rnsLeader
 
-func isFollower*(s: RaftStateMachineState): bool =
+func isFollower*(s: RaftStateMachineRefState): bool =
   return s.state == RaftNodeState.rnsFollower
 
-func isCandidate*(s: RaftStateMachineState): bool =
+func isCandidate*(s: RaftStateMachineRefState): bool =
   return s.state == RaftNodeState.rnsCandidate
 
-func leader*(s: var RaftStateMachineState): var LeaderState =
+func leader*(s: var RaftStateMachineRefState): var LeaderState =
   return s.leader
 
-func follower*(s: var RaftStateMachineState): var FollowerState =
+func follower*(s: var RaftStateMachineRefState): var FollowerState =
   return s.follower
 
-func candidate*(s: var RaftStateMachineState): var CandidateState =
+func candidate*(s: var RaftStateMachineRefState): var CandidateState =
   return s.candidate

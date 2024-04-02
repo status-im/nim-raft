@@ -26,4 +26,6 @@ requires "unittest2 >= 0.0.4"
 requires "uuids >= 0.1.11"
 requires "chronicles >= 0.10.3"
 requires "chronos >= 3.0.11"
-requires "blscurve >= 0.0.1"
+requires "https://github.com/status-im/nim-blscurve.git"
+requires "https://github.com/status-im/nim-binary-serialization.git"
+
