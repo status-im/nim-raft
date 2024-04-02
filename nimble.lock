@@ -1,6 +1,16 @@
 {
   "version": 2,
   "packages": {
+    "results": {
+      "version": "0.4.0",
+      "vcsRevision": "8a03fb2e00dccbf35807c869e0184933b0cffa37",
+      "url": "https://github.com/arnetheduck/nim-results",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "395b12b5e931ce871d1b10adcc7fe687d771abfb"
+      }
+    },
     "unittest2": {
       "version": "0.2.1",
       "vcsRevision": "262b697f38d6b6f1e7462d3b3ab81d79b894e336",
@@ -13,89 +23,50 @@
     },
     "stew": {
       "version": "0.1.0",
-      "vcsRevision": "9958aac68a7613a3312fa96dd2f3b29caf17772e",
+      "vcsRevision": "54cc67cbb83f61b6e3168b09701758c5b805120a",
       "url": "https://github.com/status-im/nim-stew",
       "downloadMethod": "git",
       "dependencies": [
+        "results",
         "unittest2"
       ],
       "checksums": {
-        "sha1": "4eb2b0c4b0fe9817ee19202e8723d46c284f2875"
+        "sha1": "c3cd1079494c16009b7b9ab5a1ccb8059974c4a5"
       }
     },
-    "isaac": {
-      "version": "0.1.3",
-      "vcsRevision": "45a5cbbd54ff59ba3ed94242620c818b9aad1b5b",
-      "url": "https://github.com/pragmagic/isaac/",
+    "nimcrypto": {
+      "version": "0.6.0",
+      "vcsRevision": "a079df92424968d46a6ac258299ce9380aa153f2",
+      "url": "https://github.com/cheatfate/nimcrypto.git",
       "downloadMethod": "git",
       "dependencies": [],
       "checksums": {
-        "sha1": "05c3583a954715d84b0bf1be97f9a503249e9cdf"
+        "sha1": "be9a4654dd5839b97f39d5060d98f18ba868623c"
       }
     },
-    "faststreams": {
-      "version": "0.3.0",
-      "vcsRevision": "422971502bd641703bf78a27cb20429e77fcfb8b",
-      "url": "https://github.com/status-im/nim-faststreams",
+    "taskpools": {
+      "version": "0.0.5",
+      "vcsRevision": "d4c43137c0590cb47f893a66ca8cb027fa6c217e",
+      "url": "https://github.com/status-im/nim-taskpools",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "a01ff26051e7fa5a94591925144ff63aa70f225a"
+      }
+    },
+    "blscurve": {
+      "version": "0.0.1",
+      "vcsRevision": "de2d3c79264bba18dbea469c8c5c4b3bb3c8bc55",
+      "url": "https://github.com/status-im/nim-blscurve",
       "downloadMethod": "git",
       "dependencies": [
+        "nimcrypto",
         "stew",
-        "unittest2"
+        "results",
+        "taskpools"
       ],
       "checksums": {
-        "sha1": "64045de53dade90c36ba5a75f51603725c5b0f30"
-      }
-    },
-    "serialization": {
-      "version": "0.2.2",
-      "vcsRevision": "4d541ec43454809904fc4c3c0a7436410ad597d2",
-      "url": "https://github.com/status-im/nim-serialization.git",
-      "downloadMethod": "git",
-      "dependencies": [
-        "faststreams",
-        "unittest2",
-        "stew"
-      ],
-      "checksums": {
-        "sha1": "1dcdb29f17d0aff295e7e57edf530b1e16fb6c59"
-      }
-    },
-    "json_serialization": {
-      "version": "0.2.2",
-      "vcsRevision": "3f1ce24ee116daedbc9c8be525e63ec03e185a28",
-      "url": "https://github.com/status-im/nim-json-serialization.git",
-      "downloadMethod": "git",
-      "dependencies": [
-        "serialization",
-        "stew"
-      ],
-      "checksums": {
-        "sha1": "da0d38b775f222703784b273225fe89267430482"
-      }
-    },
-    "httputils": {
-      "version": "0.3.0",
-      "vcsRevision": "3b491a40c60aad9e8d3407443f46f62511e63b18",
-      "url": "https://github.com/status-im/nim-http-utils",
-      "downloadMethod": "git",
-      "dependencies": [
-        "stew",
-        "unittest2"
-      ],
-      "checksums": {
-        "sha1": "1331f33585eda05d1e50385fa7871c3bf2a449d7"
-      }
-    },
-    "uuids": {
-      "version": "0.1.12",
-      "vcsRevision": "42052ba362a9cd4685463edb3781beeb9b8e547e",
-      "url": "https://github.com/pragmagic/uuids/",
-      "downloadMethod": "git",
-      "dependencies": [
-        "isaac"
-      ],
-      "checksums": {
-        "sha1": "154a31d6f5428c2863c48a057b7143ff9a6e4613"
+        "sha1": "b57c5065e1ede5a7a27d9db224b4af6ac850491c"
       }
     },
     "testutils": {
@@ -122,17 +93,17 @@
         "sha1": "5327c983483c4dd465347c6b8a974239c7c6c612"
       }
     },
-    "chronicles": {
-      "version": "0.10.3",
-      "vcsRevision": "ccbb7566d1a06bfc1ec42dd8da74a47f1d3b3f4b",
-      "url": "https://github.com/status-im/nim-chronicles.git",
+    "httputils": {
+      "version": "0.3.0",
+      "vcsRevision": "3b491a40c60aad9e8d3407443f46f62511e63b18",
+      "url": "https://github.com/status-im/nim-http-utils",
       "downloadMethod": "git",
       "dependencies": [
-        "testutils",
-        "json_serialization"
+        "stew",
+        "unittest2"
       ],
       "checksums": {
-        "sha1": "09ae5c46be94aa60d2b0ca80c215a142f94e3603"
+        "sha1": "1331f33585eda05d1e50385fa7871c3bf2a449d7"
       }
     },
     "chronos": {
@@ -148,6 +119,96 @@
       ],
       "checksums": {
         "sha1": "5783067584ac6812eb64b8454ea6f9c97ff1262a"
+      }
+    },
+    "faststreams": {
+      "version": "0.3.0",
+      "vcsRevision": "37a183153c071539ab870f427c09a1376ba311b9",
+      "url": "https://github.com/status-im/nim-faststreams",
+      "downloadMethod": "git",
+      "dependencies": [
+        "stew",
+        "testutils",
+        "chronos",
+        "unittest2"
+      ],
+      "checksums": {
+        "sha1": "5f7dbee99012f64e5d2365337e0a1fa056af63a0"
+      }
+    },
+    "serialization": {
+      "version": "0.2.2",
+      "vcsRevision": "4d541ec43454809904fc4c3c0a7436410ad597d2",
+      "url": "https://github.com/status-im/nim-serialization",
+      "downloadMethod": "git",
+      "dependencies": [
+        "faststreams",
+        "unittest2",
+        "stew"
+      ],
+      "checksums": {
+        "sha1": "1dcdb29f17d0aff295e7e57edf530b1e16fb6c59"
+      }
+    },
+    "binary_serialization": {
+      "version": "0.1.0",
+      "vcsRevision": "38a73a70fd43f3835ca01a877353858b19e39d70",
+      "url": "https://github.com/status-im/nim-binary-serialization",
+      "downloadMethod": "git",
+      "dependencies": [
+        "serialization",
+        "stew"
+      ],
+      "checksums": {
+        "sha1": "43df8153f789bc3f1920e8f56cd5ff81b9137a43"
+      }
+    },
+    "isaac": {
+      "version": "0.1.3",
+      "vcsRevision": "45a5cbbd54ff59ba3ed94242620c818b9aad1b5b",
+      "url": "https://github.com/pragmagic/isaac/",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "05c3583a954715d84b0bf1be97f9a503249e9cdf"
+      }
+    },
+    "json_serialization": {
+      "version": "0.2.4",
+      "vcsRevision": "d9394dc7286064902d825bbc1203d03d7218633a",
+      "url": "https://github.com/status-im/nim-json-serialization/",
+      "downloadMethod": "git",
+      "dependencies": [
+        "serialization",
+        "stew"
+      ],
+      "checksums": {
+        "sha1": "74e9d9c8af0431acab7f29a4eb8ddb3d5a7ec74a"
+      }
+    },
+    "uuids": {
+      "version": "0.1.12",
+      "vcsRevision": "42052ba362a9cd4685463edb3781beeb9b8e547e",
+      "url": "https://github.com/pragmagic/uuids/",
+      "downloadMethod": "git",
+      "dependencies": [
+        "isaac"
+      ],
+      "checksums": {
+        "sha1": "154a31d6f5428c2863c48a057b7143ff9a6e4613"
+      }
+    },
+    "chronicles": {
+      "version": "0.10.3",
+      "vcsRevision": "ccbb7566d1a06bfc1ec42dd8da74a47f1d3b3f4b",
+      "url": "https://github.com/status-im/nim-chronicles.git",
+      "downloadMethod": "git",
+      "dependencies": [
+        "testutils",
+        "json_serialization"
+      ],
+      "checksums": {
+        "sha1": "09ae5c46be94aa60d2b0ca80c215a142f94e3603"
       }
     }
   },
