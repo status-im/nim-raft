@@ -26,9 +26,21 @@ const
   DefaultUUID* = initUUID(0, 0)             # 00000000-0000-0000-0000-000000000000
 
 type
-  RaftNodeId* = UUID                        # uuid4 uniquely identifying every Raft Node
+  RaftNodeId* = object
+    id*: string                              # uuid4 uniquely identifying every Raft Node
   RaftNodeTerm* = int                       # Raft Node Term Type
   RaftLogIndex* = int                       # Raft Node Log Index Type
   RaftSnapshotId* = int
+  ConfigMemberSet* = seq[RaftNodeId]
+  ConfigDiff* = object
+    joining*: ConfigMemberSet
+    leaving*: ConfigMemberSet
+
   RaftConfig* = object
-    currentSet*: seq[RaftNodeId]
+    currentSet*: ConfigMemberSet
+    previousSet*: ConfigMemberSet
+
+  ReftConfigRef* = ref RaftConfig
+
+func `$`*(r: RaftNodeId): string =
+  return $r.id

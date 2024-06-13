@@ -14,6 +14,7 @@ import std/strutils
 import stew/endians2
 import stew/byteutils
 import std/algorithm
+import std/strformat
 
 import blscurve
 import tables
@@ -37,7 +38,7 @@ type
     signature: SignedShare
 
   BLSTestNode* = ref object
-    stm: RaftStateMachine
+    stm: RaftStateMachineRef
     keyShare: SecretShare
     us: UserState
     blockCommunication: bool
@@ -77,13 +78,13 @@ type
 var secretKey = "1b500388741efd98239a9b3a689721a89a92e8b209aabb10fb7dc3f844976dc2"
 
 var test_ids_3 = @[
-  RaftnodeId(parseUUID("a8409b39-f17b-4682-aaef-a19cc9f356fb")),
-  RaftnodeId(parseUUID("2a98fc33-6559-44c0-b130-fc3e9df80a69")),
-  RaftnodeId(parseUUID("9156756d-697f-4ffa-9b82-0c86720344bd"))
+  RaftnodeId(id: "a8409b39-f17b-4682-aaef-a19cc9f356fb"),
+  RaftnodeId(id: "2a98fc33-6559-44c0-b130-fc3e9df80a69"),
+  RaftnodeId(id: "9156756d-697f-4ffa-9b82-0c86720344bd")
 ]
 
 var test_ids_1 = @[
-  RaftnodeId(parseUUID("a8409b39-f17b-4682-aaef-a19cc9f356fb")),
+  RaftnodeId(id: "a8409b39-f17b-4682-aaef-a19cc9f356fb"),
 ]
 
 
@@ -154,7 +155,7 @@ proc sign(node: BLSTestNode, msg: Message): SignedShare =
       id: node.keyShare.id,
     )
 
-proc pollMessages(node: BLSTestNode): seq[SignedRpcMessage] =
+proc pollMessages(node: BLSTestNode, logLevel: DebugLogLevel): seq[SignedRpcMessage] =
   var output = node.stm.poll()
   var debugLogs = output.debugLogs
   var msgs: seq[SignedRpcMessage]
@@ -191,7 +192,7 @@ proc pollMessages(node: BLSTestNode): seq[SignedRpcMessage] =
 
   debugLogs.sort(cmpLogs)
   for msg in debugLogs:
-    if msg.level <= DebugLogLevel.Debug:
+    if msg.level <= logLevel:
       echo $msg
   return msgs
 
@@ -254,9 +255,10 @@ proc createBLSCluster(ids: seq[RaftnodeId], now: times.DateTime, k: int, n: int,
 
   for i in 0..<config.currentSet.len:
       let id = config.currentSet[i]
-      var log = initRaftLog(1)
+      var log = RaftLog.init(RaftSnapshot(index: 1, config: config))
+      #echo $log
       cluster.nodes[id] =   BLSTestNode(
-          stm: initRaftStateMachine(id, 0, log, 0, config, now, initRand(i + 42)),
+          stm: RaftStateMachineRef.new(id, 0, log, 0, now, initRand(i + 42)),
           keyShare: blsShares[i],
           blockCommunication: false,
           clusterPublicKey: pk,
@@ -264,17 +266,30 @@ proc createBLSCluster(ids: seq[RaftnodeId], now: times.DateTime, k: int, n: int,
   
   return cluster
 
+proc green*(s: string): string = "\e[32m" & s & "\e[0m"
+proc grey*(s: string): string = "\e[90m" & s & "\e[0m"
+proc purple*(s: string): string = "\e[95m" & s & "\e[0m"
+proc yellow*(s: string): string = "\e[33m" & s & "\e[0m"
+proc red*(s: string): string = "\e[31m" & s & "\e[0m"
+
+proc printByType(msgs: seq[SignedRpcMessage], kind: RaftRpcMessageType, color: proc (x: string): string) =
+  for msg in msgs:
+    if msg.raftMsg.kind == kind:
+      echo fmt"{$kind} {$msg}".color
 
 proc advance*(tc: var BLSTestCluster, now: times.DateTime, logLevel: DebugLogLevel = DebugLogLevel.Error) = 
   for id, node in tc.nodes:
     node.tick(now)
-    var msgs = node.pollMessages()
+    var msgs = node.pollMessages(logLevel)
     for msg in msgs:
       tc.delayer.add(msg, now) 
 
   var msgs = tc.delayer.getMessages(now)
+  msgs.printByType RaftRpcMessageType.AppendRequest, red
+  msgs.printByType RaftRpcMessageType.AppendReply, green
+  msgs.printByType RaftRpcMessageType.VoteRequest, yellow
+  msgs.printByType RaftRpcMessageType.VoteReply, purple
   for msg in msgs:
-    echo "eloooooooooooooooooooooooooooooooo" & $ msg
     tc.nodes[msg.raftMsg.receiver].acceptMessage(msg, now)
     
 func getLeader*(tc: BLSTestCluster): Option[BLSTestNode] = 
@@ -296,6 +311,8 @@ proc submitMessage(tc: var BLSTestCluster, msg: Message): bool =
       leader.get.messageSignatures[msg.fieldInt] = @[]
     leader.get.messageSignatures[msg.fieldInt].add(share)
     leader.get().stm.addEntry(msg.toCommand())
+    return true
+  return false
 
 
 proc blsconsensusMain*() =
@@ -307,33 +324,32 @@ proc blsconsensusMain*() =
 
       timeNow +=  300.milliseconds
       cluster.advance(timeNow)
-      echo cluster.getLeader().get().stm.state
       discard cluster.submitMessage(Message(fieldInt: 1))
       discard cluster.submitMessage(Message(fieldInt: 2))
       for i in 0..<305:
         timeNow +=  5.milliseconds
         cluster.advance(timeNow)
       
-      echo "Helloo" & $cluster.getLeader().get.us.lastCommitedMsg
     
     test "create 3 node cluster":
       var timeNow = dateTime(2017, mMar, 01, 00, 00, 00, 00, utc())
-      var delayer = initDelayer(3, 3, 1, initRand(42))
+      var delayer = initDelayer(3, 0, 1, initRand(42))
       var cluster = createBLSCluster(test_ids_3, timeNow, 2, 3, delayer)
 
       # skip time until first election
       timeNow +=  200.milliseconds
+      
       cluster.advance(timeNow)
+      
       var added = false
       var commited = false
-      for i in 0..<50:
+      for i in 0..<10:
         cluster.advance(timeNow)
         if cluster.getLeader().isSome() and not added:
-          discard cluster.submitMessage(Message(fieldInt: 42))
-          added = true
-          echo "Add to the entry log"
+          added = cluster.submitMessage(Message(fieldInt: 42))
         timeNow +=  5.milliseconds
         if cluster.getLeader().isSome():
+          #echo cluster.getLeader().get.us.lastCommitedMsg
           echo cluster.getLeader().get.us.lastCommitedMsg
           if cluster.getLeader().get.us.lastCommitedMsg.fieldInt == 42:
             commited = true

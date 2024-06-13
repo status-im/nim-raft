@@ -149,6 +149,40 @@
       "checksums": {
         "sha1": "5783067584ac6812eb64b8454ea6f9c97ff1262a"
       }
+    },
+    "nimcrypto": {
+      "version": "0.6.0",
+      "vcsRevision": "a079df92424968d46a6ac258299ce9380aa153f2",
+      "url": "https://github.com/cheatfate/nimcrypto.git",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "be9a4654dd5839b97f39d5060d98f18ba868623c"
+      }
+    },
+    "taskpools": {
+      "version": "0.0.5",
+      "vcsRevision": "d4c43137c0590cb47f893a66ca8cb027fa6c217e",
+      "url": "https://github.com/status-im/nim-taskpools",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "a01ff26051e7fa5a94591925144ff63aa70f225a"
+      }
+    },
+    "blscurve": {
+      "version": "0.0.1",
+      "vcsRevision": "1002533ad205fa71d60d6fd8f8c283b9352a5314",
+      "url": "https://github.com/status-im/nim-blscurve",
+      "downloadMethod": "git",
+      "dependencies": [
+        "nimcrypto",
+        "stew",
+        "taskpools"
+      ],
+      "checksums": {
+        "sha1": "bd3af4ebaad53f808a1d7c99085a442177506103"
+      }
     }
   },
   "tasks": {}

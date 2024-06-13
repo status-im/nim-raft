@@ -26,5 +26,6 @@ requires "unittest2 >= 0.0.4"
 requires "uuids >= 0.1.11"
 requires "chronicles >= 0.10.3"
 requires "chronos >= 3.0.11"
+requires "blscurve"
 
 
