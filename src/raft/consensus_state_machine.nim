@@ -411,7 +411,7 @@ func tick*(sm: var RaftStateMachineRef, now: times.DateTime) =
     sm.timeNow = now
     if sm.state.isLeader:
       sm.tickLeader(now);
-    elif sm.state.isFollower and sm.timeNow - sm.lastElectionTime > sm.randomizedElectionTime:
+    elif sm.timeNow - sm.lastElectionTime > sm.randomizedElectionTime:
       sm.debug "Become candidate"
       sm.becomeCandidate()
 
