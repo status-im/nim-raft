@@ -11,6 +11,28 @@
         "sha1": "1bac3a8355441edeed1ef3134e7436d6fb5d4498"
       }
     },
+    "bearssl": {
+      "version": "0.2.1",
+      "vcsRevision": "d55d3a86d7ec3ad11b244e17b3bad490bfbd076d",
+      "url": "https://github.com/status-im/nim-bearssl.git",
+      "downloadMethod": "git",
+      "dependencies": [
+        "unittest2"
+      ],
+      "checksums": {
+        "sha1": "5327c983483c4dd465347c6b8a974239c7c6c612"
+      }
+    },
+    "nimcrypto": {
+      "version": "0.6.0",
+      "vcsRevision": "71bca15508e2c0548f32b42a69bcfb1ccd9ab9ff",
+      "url": "https://github.com/cheatfate/nimcrypto",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "5c65396428df9112a15a9e58f0b1a6156dca1b35"
+      }
+    },
     "stew": {
       "version": "0.1.0",
       "vcsRevision": "9958aac68a7613a3312fa96dd2f3b29caf17772e",
@@ -23,14 +45,51 @@
         "sha1": "4eb2b0c4b0fe9817ee19202e8723d46c284f2875"
       }
     },
-    "isaac": {
-      "version": "0.1.3",
-      "vcsRevision": "45a5cbbd54ff59ba3ed94242620c818b9aad1b5b",
-      "url": "https://github.com/pragmagic/isaac/",
+    "results": {
+      "version": "0.5.0",
+      "vcsRevision": "57b2392ad69849e3e2d02b74a8a0feee2c3d9570",
+      "url": "https://github.com/arnetheduck/nim-results",
       "downloadMethod": "git",
       "dependencies": [],
       "checksums": {
-        "sha1": "05c3583a954715d84b0bf1be97f9a503249e9cdf"
+        "sha1": "901e2ed088160fdcb8fdf3b315ce62baedc3f7ba"
+      }
+    },
+    "taskpools": {
+      "version": "0.0.5",
+      "vcsRevision": "7b74a716a40249720fd7da428113147942b9642d",
+      "url": "https://github.com/status-im/nim-taskpools",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "56ac866d713f588ec9f62f96e3ec89a797173f98"
+      }
+    },
+    "blscurve": {
+      "version": "0.0.1",
+      "vcsRevision": "52ae4332c749d89fa05226f5493decae568f682c",
+      "url": "https://github.com/status-im/nim-blscurve",
+      "downloadMethod": "git",
+      "dependencies": [
+        "nimcrypto",
+        "stew",
+        "results",
+        "taskpools"
+      ],
+      "checksums": {
+        "sha1": "97c3be6cdca6f321a48debadcb51881e5f3bfe63"
+      }
+    },
+    "testutils": {
+      "version": "0.5.0",
+      "vcsRevision": "dfc4c1b39f9ded9baf6365014de2b4bfb4dafc34",
+      "url": "https://github.com/status-im/nim-testutils",
+      "downloadMethod": "git",
+      "dependencies": [
+        "unittest2"
+      ],
+      "checksums": {
+        "sha1": "756d0757c4dd06a068f9d38c7f238576ba5ee897"
       }
     },
     "faststreams": {
@@ -73,55 +132,6 @@
         "sha1": "da0d38b775f222703784b273225fe89267430482"
       }
     },
-    "httputils": {
-      "version": "0.3.0",
-      "vcsRevision": "3b491a40c60aad9e8d3407443f46f62511e63b18",
-      "url": "https://github.com/status-im/nim-http-utils",
-      "downloadMethod": "git",
-      "dependencies": [
-        "stew",
-        "unittest2"
-      ],
-      "checksums": {
-        "sha1": "1331f33585eda05d1e50385fa7871c3bf2a449d7"
-      }
-    },
-    "uuids": {
-      "version": "0.1.12",
-      "vcsRevision": "42052ba362a9cd4685463edb3781beeb9b8e547e",
-      "url": "https://github.com/pragmagic/uuids/",
-      "downloadMethod": "git",
-      "dependencies": [
-        "isaac"
-      ],
-      "checksums": {
-        "sha1": "154a31d6f5428c2863c48a057b7143ff9a6e4613"
-      }
-    },
-    "testutils": {
-      "version": "0.5.0",
-      "vcsRevision": "dfc4c1b39f9ded9baf6365014de2b4bfb4dafc34",
-      "url": "https://github.com/status-im/nim-testutils",
-      "downloadMethod": "git",
-      "dependencies": [
-        "unittest2"
-      ],
-      "checksums": {
-        "sha1": "756d0757c4dd06a068f9d38c7f238576ba5ee897"
-      }
-    },
-    "bearssl": {
-      "version": "0.2.1",
-      "vcsRevision": "d55d3a86d7ec3ad11b244e17b3bad490bfbd076d",
-      "url": "https://github.com/status-im/nim-bearssl.git",
-      "downloadMethod": "git",
-      "dependencies": [
-        "unittest2"
-      ],
-      "checksums": {
-        "sha1": "5327c983483c4dd465347c6b8a974239c7c6c612"
-      }
-    },
     "chronicles": {
       "version": "0.10.3",
       "vcsRevision": "ccbb7566d1a06bfc1ec42dd8da74a47f1d3b3f4b",
@@ -133,6 +143,19 @@
       ],
       "checksums": {
         "sha1": "09ae5c46be94aa60d2b0ca80c215a142f94e3603"
+      }
+    },
+    "httputils": {
+      "version": "0.3.0",
+      "vcsRevision": "3b491a40c60aad9e8d3407443f46f62511e63b18",
+      "url": "https://github.com/status-im/nim-http-utils",
+      "downloadMethod": "git",
+      "dependencies": [
+        "stew",
+        "unittest2"
+      ],
+      "checksums": {
+        "sha1": "1331f33585eda05d1e50385fa7871c3bf2a449d7"
       }
     },
     "chronos": {
@@ -148,6 +171,28 @@
       ],
       "checksums": {
         "sha1": "5783067584ac6812eb64b8454ea6f9c97ff1262a"
+      }
+    },
+    "isaac": {
+      "version": "0.1.3",
+      "vcsRevision": "45a5cbbd54ff59ba3ed94242620c818b9aad1b5b",
+      "url": "https://github.com/pragmagic/isaac/",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "05c3583a954715d84b0bf1be97f9a503249e9cdf"
+      }
+    },
+    "uuids": {
+      "version": "0.1.12",
+      "vcsRevision": "42052ba362a9cd4685463edb3781beeb9b8e547e",
+      "url": "https://github.com/pragmagic/uuids/",
+      "downloadMethod": "git",
+      "dependencies": [
+        "isaac"
+      ],
+      "checksums": {
+        "sha1": "154a31d6f5428c2863c48a057b7143ff9a6e4613"
       }
     }
   },
