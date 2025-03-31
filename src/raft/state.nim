@@ -29,7 +29,7 @@ proc `=copy`*(
   discard
 
 func `$`*(s: RaftStateMachineRefState): string =
-  return $s.state
+  $s.state
 
 func initLeader*(
     cfg: RaftConfig, index: RaftLogIndex, now: times.DateTime
@@ -37,33 +37,33 @@ func initLeader*(
   var state =
     RaftStateMachineRefState(state: RaftnodeState.rnsLeader, leader: LeaderState())
   state.leader.tracker = RaftTracker.init(cfg, index, now)
-  return state
+  state
 
 func initFollower*(leaderId: RaftNodeId): RaftStateMachineRefState =
-  return RaftStateMachineRefState(
+  RaftStateMachineRefState(
     state: RaftNodeState.rnsFollower, follower: FollowerState(leader: leaderId)
   )
 
 func initCandidate*(cfg: RaftConfig): RaftStateMachineRefState =
-  return RaftStateMachineRefState(
+  RaftStateMachineRefState(
     state: RaftnodeState.rnsCandidate,
     candidate: CandidateState(votes: RaftVotes.init(cfg)),
   )
 
 func isLeader*(s: RaftStateMachineRefState): bool =
-  return s.state == RaftNodeState.rnsLeader
+  s.state == RaftNodeState.rnsLeader
 
 func isFollower*(s: RaftStateMachineRefState): bool =
-  return s.state == RaftNodeState.rnsFollower
+  s.state == RaftNodeState.rnsFollower
 
 func isCandidate*(s: RaftStateMachineRefState): bool =
-  return s.state == RaftNodeState.rnsCandidate
+  s.state == RaftNodeState.rnsCandidate
 
 func leader*(s: var RaftStateMachineRefState): var LeaderState =
-  return s.leader
+  s.leader
 
 func follower*(s: var RaftStateMachineRefState): var FollowerState =
-  return s.follower
+  s.follower
 
 func candidate*(s: var RaftStateMachineRefState): var CandidateState =
-  return s.candidate
+  s.candidate

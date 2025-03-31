@@ -25,13 +25,13 @@ func setPersistedIndex*(
   d.persistedIndex = persistedIndex
 
 func term*(d: RaftLastPollState): RaftNodeTerm {.inline.} =
-  return d.term
+  d.term
 
 func votedFor*(d: RaftLastPollState): RaftNodeId {.inline.} =
-  return d.votedFor
+  d.votedFor
 
 func commitIndex*(d: RaftLastPollState): RaftLogIndex {.inline.} =
-  return d.commitIndex
+  d.commitIndex
 
 func persistedIndex*(d: RaftLastPollState): RaftLogIndex {.inline.} =
-  return d.persistedIndex
+  d.persistedIndex
