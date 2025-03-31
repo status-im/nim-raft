@@ -53,7 +53,7 @@ func committed(ms: var MatchSeqRef): bool =
   ms.count >= int(ms.match.len / 2) + 1
 
 func commitIndex(ms: var MatchSeqRef): RaftLogIndex =
-  var p = int((ms.match.len - 1) / 2)
+  let p = int((ms.match.len - 1) / 2)
   var matchCopy = ms.match
   matchCopy.sort()
   matchCopy[p]
@@ -162,7 +162,10 @@ func setConfig*(
   tracker.progress = @[]
 
   for s in config.currentSet:
-    # TODO: Add can_vote prop
+    # TODO: Add support for on-voting members.
+    # 4.2.1 In order to avoid availability gaps, Raft introduces an additional phase before the configuration
+    # change, in which a new server joins the cluster as a non-voting member. The leader replicates
+    # log entries to it, but it is not yet counted towards majorities for voting or commitment purposes
     tracker.current.add(s)
     let oldp = oldProgress.find(s)
     if oldp != -1:

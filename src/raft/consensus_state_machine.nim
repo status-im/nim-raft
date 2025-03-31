@@ -157,13 +157,14 @@ const loglevel {.intdefine.}: int = int(DebugLogLevel.Error)
 template addDebugLogEntry(
     sm: RaftStateMachineRef, levelArg: DebugLogLevel, message: string
 ) =
-  if loglevel >= int(levelArg):
+  let level = levelArg
+  if loglevel >= int(level):
     sm.output.debugLogs.add(
       DebugLogEntry(
         time: sm.timeNow,
         state: sm.state.state,
         term: sm.term,
-        level: levelArg,
+        level: level,
         msg: message,
         nodeId: sm.myId,
       )
@@ -312,7 +313,7 @@ func sendToImpl*(
   )
 
 func applySnapshot*(sm: RaftStateMachineRef, snapshot: RaftSnapshot): bool =
-  sm.debug "Applay snapshot" & $snapshot
+  sm.debug "Apply snapshot" & $snapshot
 
   let current = sm.log.snapshot
   if snapshot.index <= current.index:
@@ -353,7 +354,11 @@ func replicateTo*(sm: RaftStateMachineRef, follower: RaftFollowerProgressTracker
     sm.sendTo(follower.id, RaftInstallSnapshot(term: sm.term, snapshot: snapshot))
     return
 
-  # TODO: send more then one entry at once
+  # TODO: Support batching multiple entries per message.
+  # This can optimize network throughput and reduce overhead,
+  # but may negatively impact bandwidth-constrained scenarios (e.g., lagging nodes).
+  # A configurable batching policy should be provided to the state machine
+  # to dynamically determine the optimal payload size per message.
   let request = RaftRpcAppendRequest(
     previousTerm: previousTerm.get(),
     previousLogIndex: follower.nextIndex - 1,
@@ -525,7 +530,7 @@ func commit(sm: RaftStateMachineRef) =
   if not sm.state.isLeader:
     return
 
-  assert(sm.commitIndex <= sm.log.lastIndex)
+  doAssert(sm.commitIndex <= sm.log.lastIndex)
   if sm.commitIndex == sm.log.lastIndex:
     return
 
@@ -577,7 +582,7 @@ func poll*(sm: RaftStateMachineRef): RaftStateMachineRefOutput =
 
   let observedCommitIndex = max(sm.observedState.commitIndex, sm.log.snapshot.index)
   if observedCommitIndex < sm.commitIndex:
-    assert(sm.output.committed.len == 0)
+    doAssert(sm.output.committed.len == 0)
     for i in (observedCommitIndex + 1) .. sm.commitIndex:
       sm.output.committed.add(sm.log.getEntryByIndex(i))
 
@@ -612,7 +617,9 @@ func appendEntryReply*(
     let lastIndex = reply.accepted.lastNewIndex
     sm.debug "Accpeted message from " & $fromId & " last log index: " & $lastIndex
     follower.get().accepted(lastIndex)
-    # TODO: add leader stepping down logic here
+    # TODO: Implement leader voluntary step-down logic.
+    # In certain scenarios, the leader may want
+    # to proactively step down (e.g., due to degraded state or connectivity).
     if not sm.state.isLeader:
       return
   of RaftRpcCode.Rejected:

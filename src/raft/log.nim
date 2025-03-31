@@ -172,7 +172,7 @@ func updateConfigIndicesAfterSnapshot(rf: var RaftLog, snapshotIndex: RaftLogInd
     rf.prevConfigIndex = 0
 
 func applySnapshot*(rf: var RaftLog, snapshot: RaftSnapshot) =
-  assert snapshot.index > rf.snapshot.index
+  doAssert snapshot.index > rf.snapshot.index
   if snapshot.index >= rf.lastIndex:
     rf.logEntries = @[]
     rf.firstIndex = snapshot.index + 1
