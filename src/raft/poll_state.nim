@@ -13,25 +13,26 @@ template personEqErr*{
   `=copy`(p, i)}(p: RaftLastPollState, i: RaftLastPollState{lit | lvalue | `let`}) =
   {.error: "Person doesn't allow implicit copy".}
 
-func setTerm*(d: var RaftLastPollState, term: RaftNodeTerm) {.inline.} =
-  d.term = term
-func setVotedFor*(d: var RaftLastPollState, voteFor: RaftNodeId) {.inline.} =
-  d.votedFor = voteFor
-func setCommitIndex*(d: var RaftLastPollState, commitIndex: RaftLogIndex) {.inline.} =
-  d.commitIndex = commitIndex
-func setPersistedIndex*(
-    d: var RaftLastPollState, persistedIndex: RaftLogIndex
-) {.inline.} =
-  d.persistedIndex = persistedIndex
+template setTerm*(d: var RaftLastPollState, aTerm: RaftNodeTerm) =
+  d.term = aTerm
 
-func term*(d: RaftLastPollState): RaftNodeTerm {.inline.} =
+template setVotedFor*(d: var RaftLastPollState, aVoteFor: RaftNodeId) =
+  d.votedFor = aVoteFor
+
+template setCommitIndex*(d: var RaftLastPollState, aCommitIndex: RaftLogIndex) =
+  d.commitIndex = aCommitIndex
+
+template setPersistedIndex*(d: var RaftLastPollState, aPersistedIndex: RaftLogIndex) =
+  d.persistedIndex = aPersistedIndex
+
+template term*(d: RaftLastPollState): RaftNodeTerm =
   d.term
 
-func votedFor*(d: RaftLastPollState): RaftNodeId {.inline.} =
+template votedFor*(d: RaftLastPollState): RaftNodeId =
   d.votedFor
 
-func commitIndex*(d: RaftLastPollState): RaftLogIndex {.inline.} =
+template commitIndex*(d: RaftLastPollState): RaftLogIndex =
   d.commitIndex
 
-func persistedIndex*(d: RaftLastPollState): RaftLogIndex {.inline.} =
+template persistedIndex*(d: RaftLastPollState): RaftLogIndex =
   d.persistedIndex
