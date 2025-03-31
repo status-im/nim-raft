@@ -15,17 +15,14 @@ import stew/results
 
 import chronos
 
-export
-  results,
-  options,
-  rlocks,
-  chronos
+export results, options, rlocks, chronos
 
 type
   RaftNodeId* = object
-    id*: string                              # uuid4 uniquely identifying every Raft Node
-  RaftNodeTerm* = uint64                       # Raft Node Term Type
-  RaftLogIndex* = uint64                       # Raft Node Log Index Type
+    id*: string # uuid4 uniquely identifying every Raft Node
+
+  RaftNodeTerm* = uint64 # Raft Node Term Type
+  RaftLogIndex* = uint64 # Raft Node Log Index Type
   RaftSnapshotId* = uint32
   ConfigMemberSet* = seq[RaftNodeId]
   ConfigDiff* = object
@@ -40,6 +37,6 @@ type
 
 func `$`*(r: RaftNodeId): string =
   if r.id.len > 8:
-    return $r.id[0..8] & ".."
+    return $r.id[0 .. 8] & ".."
   else:
     return $r.id
