@@ -6,8 +6,8 @@ import std/strformat
 
 type
   RaftElectionResult* = enum
-    Unknown = 0,
-    Won = 1,
+    Unknown = 0
+    Won = 1
     Lost = 2
 
   RaftElectionTracker* = object
@@ -26,7 +26,7 @@ type
     progress*: RaftFollowerProgress
     current*: seq[RaftNodeId]
     previous*: seq[RaftNodeId]
-  
+
   RaftFollowerProgressTrackerRef* = ref object
     id*: RaftNodeId
     nextIndex*: RaftLogIndex
@@ -49,19 +49,21 @@ func add(ms: var MatchSeqRef, index: RaftLogIndex) =
     ms.count += 1
   ms.match.add(index)
 
-func committed(ms: var MatchSeqRef): bool = 
+func committed(ms: var MatchSeqRef): bool =
   return ms.count >= int(ms.match.len / 2) + 1
 
 func commitIndex(ms: var MatchSeqRef): RaftLogIndex =
-    var p = int((ms.match.len - 1) / 2)
-    var matchCopy = ms.match
-    matchCopy.sort()
-    return matchCopy[p]
+  var p = int((ms.match.len - 1) / 2)
+  var matchCopy = ms.match
+  matchCopy.sort()
+  return matchCopy[p]
 
 func init*(T: type RaftElectionTracker, nodes: seq[RaftNodeId]): T =
   RaftElectionTracker(all: nodes, granted: 0)
 
-func registerVote*(ret: var RaftElectionTracker, nodeId: RaftNodeId, granted: bool): bool =
+func registerVote*(
+    ret: var RaftElectionTracker, nodeId: RaftNodeId, granted: bool
+): bool =
   if not ret.all.contains(nodeId):
     return false
 
@@ -69,7 +71,7 @@ func registerVote*(ret: var RaftElectionTracker, nodeId: RaftNodeId, granted: bo
     ret.responded.add(nodeId)
     if granted:
       ret.granted += 1
-  
+
   return true
 
 func tallyVote*(ret: var RaftElectionTracker): RaftElectionResult =
@@ -77,7 +79,7 @@ func tallyVote*(ret: var RaftElectionTracker): RaftElectionResult =
   if ret.granted >= quorum:
     return RaftElectionResult.Won
   let unknown = len(ret.all) - len(ret.responded)
-  if  ret.granted + unknown >= quorum:
+  if ret.granted + unknown >= quorum:
     return RaftElectionResult.Unknown
   else:
     return RaftElectionResult.Lost
@@ -92,8 +94,8 @@ func init*(T: type RaftVotes, config: RaftConfig): T =
     r.previous = some(RaftElectionTracker.init(config.previousSet))
   return r
 
-proc `=copy`*(d: var RaftVotes; src: RaftVotes) {.error.} =
- discard
+proc `=copy`*(d: var RaftVotes, src: RaftVotes) {.error.} =
+  discard
 
 func registerVote*(rv: var RaftVotes, nodeId: RaftNodeId, granted: bool): bool =
   var success = rv.current.registerVote(nodeId, granted)
@@ -120,10 +122,26 @@ func find*(ls: RaftTracker, id: RaftNodeId): Option[RaftFollowerProgressTrackerR
       return some(follower)
   return none(RaftFollowerProgressTrackerRef)
 
-func new*(T: type RaftFollowerProgressTrackerRef, follower: RaftNodeId, nextIndex: RaftLogIndex, now: times.DateTime): T =
-  T(id: follower, nextIndex: nextIndex, matchIndex: 0, commitIndex: 0, replayedIndex: 0, lastMessageAt: now)
+func new*(
+    T: type RaftFollowerProgressTrackerRef,
+    follower: RaftNodeId,
+    nextIndex: RaftLogIndex,
+    now: times.DateTime,
+): T =
+  T(
+    id: follower,
+    nextIndex: nextIndex,
+    matchIndex: 0,
+    commitIndex: 0,
+    replayedIndex: 0,
+    lastMessageAt: now,
+  )
 
-func new*(T: type RaftFollowerProgressTrackerRef, follower: RaftNodeId, nextIndex: RaftLogIndex): T =
+func new*(
+    T: type RaftFollowerProgressTrackerRef,
+    follower: RaftNodeId,
+    nextIndex: RaftLogIndex,
+): T =
   T(id: follower, nextIndex: nextIndex, matchIndex: 0, commitIndex: 0, replayedIndex: 0)
 
 func find(s: var RaftFollowerProgress, what: RaftNodeId): int =
@@ -133,38 +151,47 @@ func find(s: var RaftFollowerProgress, what: RaftNodeId): int =
       return i
   return -1
 
-func setConfig*(tracker: var RaftTracker, config: RaftConfig, nextIndex: RaftLogIndex, now: times.DateTime) =
-
+func setConfig*(
+    tracker: var RaftTracker,
+    config: RaftConfig,
+    nextIndex: RaftLogIndex,
+    now: times.DateTime,
+) =
   tracker.current = @[]
   tracker.previous = @[]
-  
+
   var oldProgress = tracker.progress
   tracker.progress = @[]
 
   for s in config.currentSet:
     # TODO: Add can_vote prop
-    tracker.current.add(s)      
+    tracker.current.add(s)
     let oldp = oldProgress.find(s)
     if oldp != -1:
-        tracker.progress.add(oldProgress[oldp])
+      tracker.progress.add(oldProgress[oldp])
     else:
-        let progress = RaftFollowerProgressTrackerRef.new(s, nextIndex, now)
-        tracker.progress.add(progress)
-  
+      let progress = RaftFollowerProgressTrackerRef.new(s, nextIndex, now)
+      tracker.progress.add(progress)
+
   if config.isJoint:
     for s in config.previousSet:
-      tracker.previous.add(s)      
+      tracker.previous.add(s)
       var newp = tracker.progress.find(s)
       if newp != -1:
         # It already exists in the current set
         continue
       let oldp = oldProgress.find(s)
       if oldp != -1:
-          tracker.progress.add(oldProgress[oldp])
+        tracker.progress.add(oldProgress[oldp])
       else:
-          tracker.progress.add(RaftFollowerProgressTrackerRef.new(s, nextIndex, now))
+        tracker.progress.add(RaftFollowerProgressTrackerRef.new(s, nextIndex, now))
 
-func init*(T: type RaftTracker, config: RaftConfig, nextIndex: RaftLogIndex, now: times.DateTime): T =
+func init*(
+    T: type RaftTracker,
+    config: RaftConfig,
+    nextIndex: RaftLogIndex,
+    now: times.DateTime,
+): T =
   var tracker = T()
   tracker.setConfig(config, nextIndex, now)
   return tracker
@@ -194,7 +221,8 @@ func accepted*(fpt: var RaftFollowerProgressTrackerRef, index: RaftLogIndex) =
   fpt.nextIndex = max(fpt.nextIndex, index + 1)
 
 func `$`*(progress: RaftFollowerProgressTrackerRef): string =
-  return fmt"""
+  return
+    fmt"""
     Progress status
     id: {progress.id}
     nextIndex: {progress.nextIndex}
@@ -205,14 +233,16 @@ func `$`*(progress: RaftFollowerProgressTrackerRef): string =
   """
 
 func `$`*(election: RaftElectionTracker): string =
-  return fmt"""
+  return
+    fmt"""
     Election status
     all: {election.all}
     responded: {election.responded}
     granted: {election.granted}
   """
 func `$`*(tracker: RaftTracker): string =
-  return fmt"""
+  return
+    fmt"""
     Tracker status  
     current: {tracker.current}
     previous: {tracker.previous}
@@ -223,8 +253,8 @@ func `$`*(cfg: RaftConfig): string =
   result = "\nConfig State: \n"
   result = result & $"  Current set:\n"
   for member in cfg.currentSet:
-      result = result & $member & "\n"
+    result = result & $member & "\n"
   result = result & " Previous set:\n"
   for member in cfg.previousSet:
-      result = result & $member & "\n"
+    result = result & $member & "\n"
   return result

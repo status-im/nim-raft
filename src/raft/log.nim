@@ -4,8 +4,8 @@ import strutils
 
 type
   RaftLogEntryType* = enum
-    rletCommand = 0,
-    rletConfig = 1,
+    rletCommand = 0
+    rletConfig = 1
     rletEmpty = 2
 
   Command* = object
@@ -16,10 +16,10 @@ type
   LogEntry* = object
     term*: RaftNodeTerm
     index*: RaftLogIndex
-    case kind*: RaftLogEntryType:
-      of rletCommand: command*: Command
-      of rletConfig: config*: RaftConfig
-      of rletEmpty: discard
+    case kind*: RaftLogEntryType
+    of rletCommand: command*: Command
+    of rletConfig: config*: RaftConfig
+    of rletEmpty: discard
 
   RaftSnapshot* = object
     index*: RaftLogIndex
@@ -53,7 +53,6 @@ func init*(T: type RaftLog, snapshot: RaftSnapshot, entries: seq[LogEntry] = @[]
       log.logEntries.add(entry)
   log.updateConfigIndices()
   return log
-
 
 func lastTerm*(rf: RaftLog): RaftNodeTerm =
   if rf.logEntries.len == 0:
@@ -120,16 +119,26 @@ func appendAsFollower*(rf: var RaftLog, entry: LogEntry) =
     return
   rf.append(entry)
 
-func appendAsLeader*(rf: var RaftLog, term: RaftNodeTerm, index: RaftLogIndex, data: Command) =
-  rf.appendAsLeader(LogEntry(term: term, index: index, kind: rletCommand, command: data))
+func appendAsLeader*(
+    rf: var RaftLog, term: RaftNodeTerm, index: RaftLogIndex, data: Command
+) =
+  rf.appendAsLeader(
+    LogEntry(term: term, index: index, kind: rletCommand, command: data)
+  )
 
 func appendAsLeader*(rf: var RaftLog, term: RaftNodeTerm, index: RaftLogIndex) =
   rf.appendAsLeader(LogEntry(term: term, index: index, kind: rletEmpty))
 
-func appendAsFollower*(rf: var RaftLog, term: RaftNodeTerm, index: RaftLogIndex, data: Command) =
-  rf.appendAsFollower(LogEntry(term: term, index: index, kind: rletCommand, command: data))
+func appendAsFollower*(
+    rf: var RaftLog, term: RaftNodeTerm, index: RaftLogIndex, data: Command
+) =
+  rf.appendAsFollower(
+    LogEntry(term: term, index: index, kind: rletCommand, command: data)
+  )
 
-func matchTerm*(rf: RaftLog, index: RaftLogIndex, term: RaftNodeTerm): (bool, RaftNodeTerm) =
+func matchTerm*(
+    rf: RaftLog, index: RaftLogIndex, term: RaftNodeTerm
+): (bool, RaftNodeTerm) =
   if index == 0:
     return (true, 0)
   if index == rf.snapshot.index:
@@ -174,21 +183,28 @@ func applySnapshot*(rf: var RaftLog, snapshot: RaftSnapshot) =
   else:
     let newFirstIndex = snapshot.index + 1
     let entriesToRemove = int(newFirstIndex - rf.firstIndex)
-    rf.logEntries = rf.logEntries[entriesToRemove..^1]
+    rf.logEntries = rf.logEntries[entriesToRemove ..^ 1]
     rf.firstIndex = newFirstIndex
   rf.updateConfigIndicesAfterSnapshot(snapshot.index)
   rf.snapshot = snapshot
 
-func toString*(entry: LogEntry, commandToString: proc(c: Command): string {.noSideEffect.}): string =
-  case entry.kind:
-    of RaftLogEntryType.rletCommand:
-      return fmt"term: {entry.term}, index: {entry.index}, type: {entry.kind}, command: {commandToString(entry.command)}"
-    of RaftLogEntryType.rletEmpty:
-      return fmt"term: {entry.term}, index: {entry.index}, type: {entry.kind}, empty: true"
-    of RaftLogEntryType.rletConfig:
-      return fmt"term: {entry.term}, index: {entry.index}, type: {entry.kind}, config: {entry.config}"
+func toString*(
+    entry: LogEntry, commandToString: proc(c: Command): string {.noSideEffect.}
+): string =
+  case entry.kind
+  of RaftLogEntryType.rletCommand:
+    return
+      fmt"term: {entry.term}, index: {entry.index}, type: {entry.kind}, command: {commandToString(entry.command)}"
+  of RaftLogEntryType.rletEmpty:
+    return
+      fmt"term: {entry.term}, index: {entry.index}, type: {entry.kind}, empty: true"
+  of RaftLogEntryType.rletConfig:
+    return
+      fmt"term: {entry.term}, index: {entry.index}, type: {entry.kind}, config: {entry.config}"
 
-func toString*(rf: RaftLog, commandToString: proc(c: Command): string {.noSideEffect.}): string =
+func toString*(
+    rf: RaftLog, commandToString: proc(c: Command): string {.noSideEffect.}
+): string =
   for e in rf.logEntries:
     result.add(e.toString(commandToString) & "\n")
   return result
