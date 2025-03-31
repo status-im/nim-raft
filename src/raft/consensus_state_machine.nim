@@ -131,27 +131,26 @@ type
     state*: RaftStateMachineRefState
 
 func eq(ps: RaftLastPollState, sm: RaftStateMachineRef): bool =
-  return
-    ps.term() == sm.term and ps.votedFor() == sm.votedFor and
+  ps.term() == sm.term and ps.votedFor() == sm.votedFor and
     ps.commitIndex() == sm.commitIndex and ps.persistedIndex() == sm.log.lastIndex
 
 func leader*(sm: RaftStateMachineRef): var LeaderState =
-  return sm.state.leader
+  sm.state.leader
 
 func follower*(sm: RaftStateMachineRef): var FollowerState =
-  return sm.state.follower
+  sm.state.follower
 
 func candidate*(sm: RaftStateMachineRef): var CandidateState =
-  return sm.state.candidate
+  sm.state.candidate
 
 func isLeader*(sm: RaftStateMachineRef): bool =
-  return sm.state.isLeader
+  sm.state.isLeader
 
 func isFollower*(sm: RaftStateMachineRef): bool =
-  return sm.state.isFollower
+  sm.state.isFollower
 
 func isCandidate*(sm: RaftStateMachineRef): bool =
-  return sm.state.isCandidate
+  sm.state.isCandidate
 
 const loglevel {.intdefine.}: int = int(DebugLogLevel.Error)
 
@@ -190,8 +189,7 @@ func getLeaderId*(sm: RaftStateMachineRef): Option[RaftNodeId] =
     return some(sm.myId)
   elif sm.state.isFollower:
     return some(sm.state.follower.leader)
-  else:
-    return none(RaftNodeId)
+  none(RaftNodeId)
 
 func observe*(ps: var RaftLastPollState, sm: RaftStateMachineRef) =
   ps.setTerm sm.term
@@ -206,7 +204,7 @@ func replicationStatus*(sm: RaftStateMachineRef): string =
 
   for p in sm.leader.tracker.progress:
     report = report & "=============\n" & $p
-  return report
+  report
 
 func new*(
     T: type RaftStateMachineRef,
@@ -236,12 +234,12 @@ func new*(
 func currentLeader(sm: RaftStateMachineRef): RaftnodeId =
   if sm.state.isFollower:
     return sm.state.follower.leader
-  return RaftnodeId()
+  RaftnodeId()
 
 func findFollowerProggressById(
     sm: RaftStateMachineRef, id: RaftNodeId
 ): Option[RaftFollowerProgressTrackerRef] =
-  return sm.leader.tracker.find(id)
+  sm.leader.tracker.find(id)
 
 func sendToImpl*(
     sm: RaftStateMachineRef, id: RaftNodeId, request: RaftRpcAppendRequest
@@ -324,7 +322,7 @@ func applySnapshot*(sm: RaftStateMachineRef, snapshot: RaftSnapshot): bool =
   sm.commitIndex = max(sm.commitIndex, snapshot.index)
   sm.output.applyedSnapshots = some(snapshot)
   sm.log.applySnapshot(snapshot)
-  return true
+  true
 
 func sendTo[MsgType](sm: RaftStateMachineRef, id: RaftNodeId, request: MsgType) =
   if sm.state.isLeader:
@@ -337,7 +335,7 @@ func sendTo[MsgType](sm: RaftStateMachineRef, id: RaftNodeId, request: MsgType) 
   sm.sendToImpl(id, request)
 
 func createVoteRequest*(sm: RaftStateMachineRef): RaftRpcMessage =
-  return RaftRpcMessage(
+  RaftRpcMessage(
     currentTerm: sm.term,
     sender: sm.myId,
     kind: VoteRequest,
@@ -372,7 +370,7 @@ func replicate*(sm: RaftStateMachineRef) =
         sm.replicateTo(sm.leader.tracker.progress[followerIndex])
 
 func configuration*(sm: RaftStateMachineRef): RaftConfig =
-  return sm.log.configuration
+  sm.log.configuration
 
 func addEntry(sm: RaftStateMachineRef, entry: LogEntry): LogEntry =
   {.cast(noSideEffect).}:
@@ -399,7 +397,7 @@ func addEntry(sm: RaftStateMachineRef, entry: LogEntry): LogEntry =
       # The new configuration takes effect on each server as
       # soon as it is added to that server’s log
       sm.leader.tracker.setConfig(sm.log.configuration, sm.log.lastIndex, sm.timeNow)
-    return entry
+    entry
 
 func addEntry*(sm: RaftStateMachineRef, command: Command): LogEntry =
   sm.addEntry(
@@ -474,8 +472,6 @@ func becomeCandidate*(sm: RaftStateMachineRef) =
   if sm.candidate.votes.tallyVote == RaftElectionResult.Won:
     sm.debug "Elecation won" & $(sm.candidate.votes) & $sm.myId
     sm.becomeLeader()
-
-  return
 
 func heartbeat(sm: RaftStateMachineRef, follower: var RaftFollowerProgressTrackerRef) =
   sm.info "heartbeat " & $follower.nextIndex
@@ -598,7 +594,7 @@ func poll*(sm: RaftStateMachineRef): RaftStateMachineRefOutput =
       return
     leaderProgress.get().accepted(output.logEntries[output.logEntries.len - 1].index)
     sm.commit()
-  return output
+  output
 
 func appendEntryReply*(
     sm: RaftStateMachineRef, fromId: RaftNodeId, reply: RaftRpcAppendReply

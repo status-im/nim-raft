@@ -52,22 +52,20 @@ func init*(T: type RaftLog, snapshot: RaftSnapshot, entries: seq[LogEntry] = @[]
     if entry.index >= log.firstIndex:
       log.logEntries.add(entry)
   log.updateConfigIndices()
-  return log
+  log
 
 func lastTerm*(rf: RaftLog): RaftNodeTerm =
   if rf.logEntries.len == 0:
     return rf.snapshot.term
-  else:
-    return rf.logEntries[^1].term
+  rf.logEntries[^1].term
 
 func entriesCount*(rf: RaftLog): int =
-  return rf.logEntries.len
+  rf.logEntries.len
 
 func lastIndex*(rf: RaftLog): RaftLogIndex =
   if rf.logEntries.len == 0:
     return rf.snapshot.index
-  else:
-    return rf.logEntries[^1].index
+  rf.logEntries[^1].index
 
 func nextIndex*(rf: RaftLog): RaftLogIndex =
   return rf.lastIndex + 1
@@ -75,10 +73,10 @@ func nextIndex*(rf: RaftLog): RaftLogIndex =
 func getRelativeIndex*(rf: RaftLog, index: RaftLogIndex): Option[int] =
   if index < rf.firstIndex or index > rf.lastIndex:
     return none(int)
-  return some(int(index - rf.firstIndex))
+  some(int(index - rf.firstIndex))
 
 func hasIndex*(rf: RaftLog, index: RaftLogIndex): bool =
-  return rf.getRelativeIndex(index).isSome
+  rf.getRelativeIndex(index).isSome
 
 func truncateUncommitted*(rf: var RaftLog, index: RaftLogIndex) =
   let relIndexOpt = rf.getRelativeIndex(index)
@@ -92,10 +90,10 @@ func truncateUncommitted*(rf: var RaftLog, index: RaftLogIndex) =
 func isUpToDate*(rf: RaftLog, index: RaftLogIndex, term: RaftNodeTerm): bool =
   let lastTerm = rf.lastTerm
   let lastIndex = rf.lastIndex
-  return term > lastTerm or (term == lastTerm and index >= lastIndex)
+  term > lastTerm or (term == lastTerm and index >= lastIndex)
 
 func getEntryByIndex*(rf: RaftLog, index: RaftLogIndex): LogEntry =
-  return rf.logEntries[index - rf.firstIndex]
+  rf.logEntries[index - rf.firstIndex]
 
 func append(rf: var RaftLog, entry: LogEntry) =
   rf.logEntries.add(entry)
@@ -149,8 +147,7 @@ func matchTerm*(
     let relIndex = relIndexOpt.get()
     let myTerm = rf.logEntries[relIndex].term
     return (myTerm == term, myTerm)
-  else:
-    return (false, 0)
+  (false, 0)
 
 func termForIndex*(rf: RaftLog, index: RaftLogIndex): Option[RaftNodeTerm] =
   if index == rf.snapshot.index:
@@ -158,15 +155,14 @@ func termForIndex*(rf: RaftLog, index: RaftLogIndex): Option[RaftNodeTerm] =
   let relIndexOpt = rf.getRelativeIndex(index)
   if relIndexOpt.isSome:
     return some(rf.logEntries[relIndexOpt.get()].term)
-  else:
-    return none(RaftNodeTerm)
+  none(RaftNodeTerm)
 
 func configuration*(rf: RaftLog): RaftConfig =
   if rf.lastConfigIndex > 0:
     let relIndexOpt = rf.getRelativeIndex(rf.lastConfigIndex)
     if relIndexOpt.isSome:
       return rf.logEntries[relIndexOpt.get()].config
-  return rf.snapshot.config
+  rf.snapshot.config
 
 func updateConfigIndicesAfterSnapshot(rf: var RaftLog, snapshotIndex: RaftLogIndex) =
   if snapshotIndex >= rf.lastConfigIndex:
@@ -207,7 +203,7 @@ func toString*(
 ): string =
   for e in rf.logEntries:
     result.add(e.toString(commandToString) & "\n")
-  return result
+  result
 
 func toString(bytes: openarray[byte]): string =
   result = newString(bytes.len)
@@ -216,10 +212,9 @@ func toString(bytes: openarray[byte]): string =
 func commandToHex(c: Command): string =
   for b in c.data:
     result.add(b.toHex() & " ")
-  return result.strip()
+  result.strip()
 
 func `$`*(rf: RaftLog): string =
   result = "\nLog state:\n"
   for e in rf.logEntries:
     result.add(e.toString(commandToHex) & "\n")
-  return result

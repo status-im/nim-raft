@@ -38,5 +38,4 @@ type
 func `$`*(r: RaftNodeId): string =
   if r.id.len > 8:
     return $r.id[0 .. 8] & ".."
-  else:
-    return $r.id
+  $r.id

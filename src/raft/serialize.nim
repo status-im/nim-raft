@@ -14,7 +14,7 @@ proc writeValue*(w: var BinaryWriter, value: RaftSnapshotId) =
   w.writeValue(uint32(value))
 
 proc toBinary*(msg: RaftRpcMessage): seq[byte] =
-  return Binary.encode(msg)
+  Binary.encode(msg)
 
 proc toBinary*(msg: LogEntry): seq[byte] =
-  return Binary.encode(msg)
+  Binary.encode(msg)
