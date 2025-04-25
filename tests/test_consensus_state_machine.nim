@@ -14,7 +14,7 @@ import ../src/raft/log
 import ../src/raft/tracker
 import ../src/raft/state
 import std/sets
-import std/[times, sequtils, random]
+import std/[times, random]
 import uuids
 import tables
 import std/algorithm
