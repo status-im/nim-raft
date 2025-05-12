@@ -248,10 +248,26 @@ func `$`*(tracker: RaftTracker): string =
   """
 
 func `$`*(cfg: RaftConfig): string =
-  result = "\nConfig State: \n"
-  result = result & $"  Current set:\n"
+  let preamble = "\nConfig state: \n   Current set:\n"
+  let prevSetStr = " Previous set:\n"
+  var currentSetMemberStr = newSeqOfCap[string](cfg.currentSet.len)
+  var prevSetMemberStr = newSeqOfCap[string](cfg.previousSet.len)
+  var size = preamble.len + prevSetStr.len
   for member in cfg.currentSet:
-    result = result & $member & "\n"
-  result = result & " Previous set:\n"
+    let str = $member
+    size += str.len + 1 # +1 for the new line
+    currentSetMemberStr.add(str)
+
   for member in cfg.previousSet:
-    result = result & $member & "\n"
+    let str = $member
+    size += str.len + 1 # +1 for the new line
+    prevSetMemberStr.add(str)
+
+  result = newStringOfCap(size)
+  result.add(preamble)
+  for member in currentSetMemberStr:
+    result.add(member & "\n")
+  result.add(prevSetStr)
+  for member in prevSetMemberStr:
+    result.add(member & "\n")
+  assert result.len == size

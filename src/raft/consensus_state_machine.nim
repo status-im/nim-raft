@@ -155,9 +155,11 @@ func isCandidate*(sm: RaftStateMachineRef): bool =
 const loglevel {.intdefine.}: int = int(DebugLogLevel.Error)
 
 template addDebugLogEntry(
-    sm: RaftStateMachineRef, levelArg: DebugLogLevel, message: string
+    smArg: RaftStateMachineRef, levelArg: DebugLogLevel, messageArg: string
 ) =
+  let sm = smArg
   let level = levelArg
+  let message = messageArg
   if loglevel >= int(level):
     sm.output.debugLogs.add(
       DebugLogEntry(
@@ -199,12 +201,24 @@ func observe*(ps: var RaftLastPollState, sm: RaftStateMachineRef) =
   ps.setPersistedIndex sm.log.lastIndex
 
 func replicationStatus*(sm: RaftStateMachineRef): string =
-  var report = "\nReplication report\n"
-  if not sm.state.isLeader:
-    return report
+  var progressStrings = newSeqOfCap[string](sm.leader.tracker.progress.len)
+
+  let reportPreamble = "\nReplication report\n"
+  let separator = "=============\n"
+  var size = reportPreamble.len
 
   for p in sm.leader.tracker.progress:
-    report = report & "=============\n" & $p
+    let str = $p
+    size += str.len + separator.len
+    progressStrings.add(str)
+
+  var report = newStringOfCap(size)
+  report.add(reportPreamble)
+  for p in progressStrings:
+    report.add(separator)
+    report.add($p)
+
+  assert report.len == size
   report
 
 func new*(
@@ -378,31 +392,30 @@ func configuration*(sm: RaftStateMachineRef): RaftConfig =
   sm.log.configuration
 
 func addEntry(sm: RaftStateMachineRef, entry: LogEntry): LogEntry =
-  {.cast(noSideEffect).}:
-    var tmpEntry = entry
-    if not sm.state.isLeader:
-      sm.error "Only the leader can handle new entries"
+  var tmpEntry = entry
+  if not sm.state.isLeader:
+    sm.error "Only the leader can handle new entries"
+    return
+
+  if entry.kind == rletConfig:
+    if sm.log.lastConfigIndex > sm.commitIndex or sm.log.configuration.isJoint:
+      sm.error "The previous configuration is not commited yet"
       return
+    sm.debug "Configuration change"
+    # 4.3. Arbitrary configuration changes using joint consensus
+    var tmpCfg = RaftConfig(currentSet: sm.log.configuration().currentSet)
+    tmpCfg.enterJoint(tmpEntry.config.currentSet)
+    tmpEntry.config = tmpCfg
 
-    if entry.kind == rletConfig:
-      if sm.log.lastConfigIndex > sm.commitIndex or sm.log.configuration.isJoint:
-        sm.error "The previous configuration is not commited yet"
-        return
-      sm.debug "Configuration change"
-      # 4.3. Arbitrary configuration changes using joint consensus
-      var tmpCfg = RaftConfig(currentSet: sm.log.configuration().currentSet)
-      tmpCfg.enterJoint(tmpEntry.config.currentSet)
-      tmpEntry.config = tmpCfg
-
-    sm.log.appendAsLeader(tmpEntry)
-    if entry.kind == rletConfig:
-      sm.debug "Update leader config"
-      # 4.1. Cluster membership changes/Safety.
-      #
-      # The new configuration takes effect on each server as
-      # soon as it is added to that server’s log
-      sm.leader.tracker.setConfig(sm.log.configuration, sm.log.lastIndex, sm.timeNow)
-    entry
+  sm.log.appendAsLeader(tmpEntry)
+  if entry.kind == rletConfig:
+    sm.debug "Update leader config"
+    # 4.1. Cluster membership changes/Safety.
+    #
+    # The new configuration takes effect on each server as
+    # soon as it is added to that server’s log
+    sm.leader.tracker.setConfig(sm.log.configuration, sm.log.lastIndex, sm.timeNow)
+  entry
 
 func addEntry*(sm: RaftStateMachineRef, command: Command): LogEntry =
   sm.addEntry(
@@ -412,11 +425,10 @@ func addEntry*(sm: RaftStateMachineRef, command: Command): LogEntry =
   )
 
 func addEntry*(sm: RaftStateMachineRef, config: RaftConfig): LogEntry =
-  {.cast(noSideEffect).}:
-    sm.debug "new config entry" & $config.currentSet
-    sm.addEntry(
-      LogEntry(term: sm.term, index: sm.log.nextIndex, kind: rletConfig, config: config)
-    )
+  sm.debug "new config entry" & $config.currentSet
+  sm.addEntry(
+    LogEntry(term: sm.term, index: sm.log.nextIndex, kind: rletConfig, config: config)
+  )
 
 func addEntry*(sm: RaftStateMachineRef, dummy: Empty): LogEntry =
   sm.addEntry(LogEntry(term: sm.term, index: sm.log.nextIndex, kind: rletEmpty))
