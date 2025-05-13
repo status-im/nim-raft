@@ -247,8 +247,8 @@ func `$`*(tracker: RaftTracker): string =
   """
 
 func `$`*(cfg: RaftConfig): string =
-  let preamble = "\nConfig state: \n   Current set:\n"
-  let prevSetStr = " Previous set:\n"
+  const preamble = "\nConfig state: \n   Current set:\n"
+  const prevSetStr = " Previous set:\n"
   var currentSetMemberStr = newSeqOfCap[string](cfg.currentSet.len)
   var prevSetMemberStr = newSeqOfCap[string](cfg.previousSet.len)
   var size = preamble.len + prevSetStr.len

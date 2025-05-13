@@ -203,8 +203,8 @@ func observe*(ps: var RaftLastPollState, sm: RaftStateMachineRef) =
 func replicationStatus*(sm: RaftStateMachineRef): string =
   var progressStrings = newSeqOfCap[string](sm.leader.tracker.progress.len)
 
-  let reportPreamble = "\nReplication report\n"
-  let separator = "=============\n"
+  const reportPreamble = "\nReplication report\n"
+  const separator = "=============\n"
   var size = reportPreamble.len
 
   for p in sm.leader.tracker.progress:
