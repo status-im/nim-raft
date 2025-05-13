@@ -103,7 +103,6 @@ func registerVote*(rv: var RaftVotes, nodeId: RaftNodeId, granted: bool): bool =
   success
 
 func tallyVote*(rv: var RaftVotes): RaftElectionResult =
-  # TODO: Add support for configuration
   if rv.previous.isSome:
     var electionResult = rv.previous.get.tallyVote()
     if electionResult != RaftElectionResult.Won:
