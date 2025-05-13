@@ -11,7 +11,6 @@
 
 import std/rlocks
 import options
-import stew/results
 
 import chronos
 
