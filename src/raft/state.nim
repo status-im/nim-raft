@@ -1,15 +1,14 @@
-
 import types
 import tracker
 
 import std/[times]
 type
   RaftNodeState* = enum
-    rnsFollower = 0,                        # Follower state
-    rnsCandidate = 1                        # Candidate state
-    rnsLeader = 2                           # Leader state
+    rnsFollower = 0 # Follower state
+    rnsCandidate = 1 # Candidate state
+    rnsLeader = 2 # Leader state
 
-  RaftStateMachineState* = object
+  RaftStateMachineRefState* = object
     case state*: RaftNodeState
     of rnsFollower: follower: FollowerState
     of rnsCandidate: candidate: CandidateState
@@ -24,34 +23,47 @@ type
   FollowerState* = object
     leader*: RaftNodeId
 
-func `$`*(s: RaftStateMachineState): string =
-  return $s.state
+proc `=copy`*(
+    d: var RaftStateMachineRefState, src: RaftStateMachineRefState
+) {.error.} =
+  discard
 
-func initLeader*(cfg: RaftConfig, index: RaftLogIndex, now: times.DateTime): RaftStateMachineState =
-  var state = RaftStateMachineState(state: RaftnodeState.rnsLeader, leader: LeaderState())
-  state.leader.tracker = initTracker(cfg, index, now)
-  return state
+func `$`*(s: RaftStateMachineRefState): string =
+  $s.state
 
-func initFollower*(leaderId: RaftNodeId): RaftStateMachineState =
-  return RaftStateMachineState(state: RaftNodeState.rnsFollower, follower: FollowerState(leader: leaderId))
+func initLeader*(
+    cfg: RaftConfig, index: RaftLogIndex, now: times.DateTime
+): RaftStateMachineRefState =
+  var state =
+    RaftStateMachineRefState(state: RaftnodeState.rnsLeader, leader: LeaderState())
+  state.leader.tracker = RaftTracker.init(cfg, index, now)
+  state
 
-func initCandidate*(cfg: RaftConfig): RaftStateMachineState =
-  return RaftStateMachineState(state: RaftnodeState.rnsCandidate, candidate: CandidateState(votes: initVotes(cfg)))
+func initFollower*(leaderId: RaftNodeId): RaftStateMachineRefState =
+  RaftStateMachineRefState(
+    state: RaftNodeState.rnsFollower, follower: FollowerState(leader: leaderId)
+  )
 
-func isLeader*(s: RaftStateMachineState): bool =
-  return s.state == RaftNodeState.rnsLeader
+func initCandidate*(cfg: RaftConfig): RaftStateMachineRefState =
+  RaftStateMachineRefState(
+    state: RaftnodeState.rnsCandidate,
+    candidate: CandidateState(votes: RaftVotes.init(cfg)),
+  )
 
-func isFollower*(s: RaftStateMachineState): bool =
-  return s.state == RaftNodeState.rnsFollower
+func isLeader*(s: RaftStateMachineRefState): bool =
+  s.state == RaftNodeState.rnsLeader
 
-func isCandidate*(s: RaftStateMachineState): bool =
-  return s.state == RaftNodeState.rnsCandidate
+func isFollower*(s: RaftStateMachineRefState): bool =
+  s.state == RaftNodeState.rnsFollower
 
-func leader*(s: var RaftStateMachineState): var LeaderState =
-  return s.leader
+func isCandidate*(s: RaftStateMachineRefState): bool =
+  s.state == RaftNodeState.rnsCandidate
 
-func follower*(s: var RaftStateMachineState): var FollowerState =
-  return s.follower
+func leader*(s: var RaftStateMachineRefState): var LeaderState =
+  s.leader
 
-func candidate*(s: var RaftStateMachineState): var CandidateState =
-  return s.candidate
+func follower*(s: var RaftStateMachineRefState): var FollowerState =
+  s.follower
+
+func candidate*(s: var RaftStateMachineRefState): var CandidateState =
+  s.candidate
